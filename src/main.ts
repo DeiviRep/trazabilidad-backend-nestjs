@@ -9,7 +9,8 @@ async function bootstrap() {
     // origin: 'http://localhost:3001', // Permitir solo el frontend en localhost:3000
     origin: [
       'https://trazabilidad-frontend-heroui-be37at4ld-deivireps-projects.vercel.app',
-      'https://trazabilidad-frontend-heroui.vercel.app'
+      'https://trazabilidad-frontend-heroui.vercel.app',
+      'http://localhost:3001'
     ],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     allowedHeaders: 'Content-Type, Accept',
