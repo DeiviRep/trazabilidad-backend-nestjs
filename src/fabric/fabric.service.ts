@@ -3,6 +3,7 @@ import { Gateway, connect, Identity, Signer, signers } from '@hyperledger/fabric
 import * as grpc from '@grpc/grpc-js';
 import * as fs from 'fs';
 import * as crypto from 'crypto';
+import * as path from 'path';
 
 @Injectable()
 export class FabricService {
@@ -13,15 +14,9 @@ export class FabricService {
   }
 
   async connectToFabric() {
-    const clientCert = fs.readFileSync(
-      '/home/deivi/TESIS/fabric-samples/test-network/organizations/peerOrganizations/org1.example.com/users/User1@org1.example.com/msp/signcerts/User1@org1.example.com-cert.pem'
-    );
-    const clientKey = fs.readFileSync(
-      '/home/deivi/TESIS/fabric-samples/test-network/organizations/peerOrganizations/org1.example.com/users/User1@org1.example.com/msp/keystore/priv_sk'
-    );
-    const tlsCert = fs.readFileSync(
-      '/home/deivi/TESIS/fabric-samples/test-network/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt'
-    );
+    const clientCert = fs.readFileSync(path.join(__dirname, '../../fabric-config/User1@org1.example.com-cert.pem'));
+    const clientKey = fs.readFileSync(path.join(__dirname, '../../fabric-config/priv_sk'));
+    const tlsCert = fs.readFileSync(path.join(__dirname, '../../fabric-config/ca.crt'));
 
     const tlsCredentials = grpc.credentials.createSsl(tlsCert);
     const client = new grpc.Client('localhost:7051', tlsCredentials);
