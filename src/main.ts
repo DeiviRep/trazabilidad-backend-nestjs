@@ -6,7 +6,11 @@ async function bootstrap() {
 
   // Habilitar CORS
   app.enableCors({
-    origin: 'http://localhost:3001', // Permitir solo el frontend en localhost:3000
+    // origin: 'http://localhost:3001', // Permitir solo el frontend en localhost:3000
+    origin: [
+      'https://trazabilidad-frontend-heroui-be37at4ld-deivireps-projects.vercel.app',
+      'https://trazabilidad-frontend-heroui.vercel.app'
+    ],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     allowedHeaders: 'Content-Type, Accept',
   });
