@@ -15,7 +15,7 @@ export class FabricService {
   
   async connectToFabric() {
     const PORT_LOCAL = 'localhost:7051';
-    const PORT_PROD = 'https://trazabilidad-fabric.loca.lt'; // Ajusta si el puerto cambia
+    const PORT_PROD = '0.tcp.sa.ngrok.io:15418'; // Ajusta si el puerto cambia
     const IS_PROD = process.env.IS_PROD === 'true'; // Convierte string a booleano
     const FABRIC_HOST = IS_PROD ? PORT_PROD : PORT_LOCAL;
     const clientCert = fs.readFileSync(path.join(__dirname, '../../fabric-config/User1@org1.example.com-cert.pem'));
