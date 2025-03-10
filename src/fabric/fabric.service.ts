@@ -22,7 +22,10 @@ export class FabricService {
     const clientKey = fs.readFileSync(path.join(__dirname, '../../fabric-config/priv_sk'));
     const tlsCert = fs.readFileSync(path.join(__dirname, '../../fabric-config/ca.crt'));
 
-    const tlsCredentials = grpc.credentials.createSsl(tlsCert);
+    // Crear credenciales TLS sin verificar el hostname
+    const tlsCredentials = grpc.credentials.createSsl(tlsCert, null, null, {
+      checkServerIdentity: () => undefined, // Ignora la validación del hostname
+    });
     const client = new grpc.Client(FABRIC_HOST, tlsCredentials);
 
     const identity: Identity = {
