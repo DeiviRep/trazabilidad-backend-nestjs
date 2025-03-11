@@ -3,15 +3,16 @@ import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  const allowedOrigins: string[] = [];
+  let index = 1;
+  while (process.env[`CORS_ORIGIN_${index}`]) {
+    allowedOrigins.push(process.env[`CORS_ORIGIN_${index}`] as string );
+    index++;
+  }
 
   // Habilitar CORS
   app.enableCors({
-    // origin: 'http://localhost:3001', // Permitir solo el frontend en localhost:3000
-    origin: [
-      'https://trazabilidad-frontend-heroui-be37at4ld-deivireps-projects.vercel.app',
-      'https://trazabilidad-frontend-heroui.vercel.app',
-      'http://localhost:3001'
-    ],
+    origin: allowedOrigins,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     allowedHeaders: 'Content-Type, Accept',
   });
