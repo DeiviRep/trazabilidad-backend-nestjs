@@ -44,7 +44,7 @@ export class FabricService {
 
   async invoke(functionName: string, ...args: string[]): Promise<string> {
     const network = this.gateway.getNetwork('mychannel');
-    const contract = network.getContract('trazabilidad');
+    const contract = network.getContract('traceability');
     const result = await contract.submitTransaction(functionName, ...args);
     const resultString = Buffer.from(result).toString('utf8'); // Convertir Buffer explícitamente
     console.log('Invoke result:', resultString); // Depuración
@@ -53,7 +53,7 @@ export class FabricService {
 
   async query(functionName: string, ...args: string[]): Promise<string> {
     const network = this.gateway.getNetwork('mychannel');
-    const contract = network.getContract('trazabilidad');
+    const contract = network.getContract('traceability');
     const result = await contract.evaluateTransaction(functionName, ...args);
     const resultString = Buffer.from(result).toString('utf8'); // Convertir Buffer explícitamente
     console.log('Query result:', resultString); // Depuración
