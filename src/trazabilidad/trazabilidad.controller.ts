@@ -1,13 +1,27 @@
-import { Controller, Get, Post, Body, Param } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Res, UseInterceptors } from '@nestjs/common';
 import { TrazabilidadService } from './trazabilidad.service';
+import { Response } from 'express';
+import * as path from 'path';
+import * as fs from 'fs';
 
 @Controller('trazabilidad')
 export class TrazabilidadController {
   constructor(private readonly trazabilidadService: TrazabilidadService) {}
 
   @Post('registrar')
-  async registrarDispositivo(@Body() body: { id: string, modelo: string, marca: string, caracteristica: string, origen: string }) {
-    return this.trazabilidadService.registrarDispositivo(body.id, body.modelo, body.marca, body.caracteristica, body.origen);
+  async registrarDispositivo(
+    @Body() body: { id: string; modelo: string; marca: string; origen: string; latitud: string; longitud: string; evento: string }
+  ) {
+    const result = await this.trazabilidadService.registrarDispositivo(
+      body.id,
+      body.modelo,
+      body.marca,
+      body.origen,
+      body.latitud,
+      body.longitud,
+      body.evento
+    );
+    return JSON.parse(result);
   }
 
   @Get('consultar/:id')
@@ -16,13 +30,19 @@ export class TrazabilidadController {
   }
 
   @Post('actualizar')
-  async actualizarDispositivo(@Body() body: { id: string, modelo: string, marca: string, caracteristica: string, origen: string }) {
-    return this.trazabilidadService.actualizarDispositivo(body.id, body.modelo, body.marca, body.caracteristica, body.origen);
-  }
-
-  @Post('eliminar/:id')
-  async eliminarDispositivo(@Param('id') id: string) {
-    return this.trazabilidadService.eliminarDispositivo(id);
+  async actualizarDispositivo(
+    @Body() body: { id: string; modelo: string; marca: string; origen: string; latitud: string; longitud: string; evento: string }
+  ) {
+    const result = await this.trazabilidadService.actualizarDispositivo(
+      body.id,
+      body.modelo,
+      body.marca,
+      body.origen,
+      body.latitud,
+      body.longitud,
+      body.evento
+    );
+    return JSON.parse(result);
   }
 
   @Get('listar')
@@ -30,33 +50,31 @@ export class TrazabilidadController {
     return this.trazabilidadService.listarDispositivos();
   }
 
-  @Get('marca/:marca')
-  async consultarPorMarca(@Param('marca') marca: string) {
-    return this.trazabilidadService.consultarPorMarca(marca);
-  }
-
-  @Get('origen/:origen')
-  async consultarPorOrigen(@Param('origen') origen: string) {
-    return this.trazabilidadService.consultarPorOrigen(origen);
-  }
-
   @Get('historial/:id')
   async obtenerHistorial(@Param('id') id: string) {
     return this.trazabilidadService.obtenerHistorial(id);
   }
 
-  @Get('rango/:id/:start/:end')
-  async consultarPorRangoDeTiempo(@Param('id') id: string, @Param('start') start: string, @Param('end') end: string) {
-    return this.trazabilidadService.consultarPorRangoDeTiempo(id, start, end);
+  @Get('qr/:id')
+  async generarQR(@Param('id') id: string) {
+    const qrUrl = await this.trazabilidadService.generarQR(id);
+    return { qrUrl: `http://localhost:3000${qrUrl}` }; // URL completa
   }
 
-  @Get('contar')
-  async contarPorMarca() {
-    return this.trazabilidadService.contarPorMarca();
-  }
+  @Get('qr-image/:id')
+  async servirQR(@Param('id') id: string, @Res() res: Response) {
+    const qrFilePath = path.join(__dirname, '../../qr-images', `qr-${id}.png`);
+    
+    if (!fs.existsSync(qrFilePath)) {
+      res.status(404).send('QR no encontrado');
+      return;
+    }
 
-  @Get('exportar')
-  async exportarHistorialCompleto() {
-    return this.trazabilidadService.exportarHistorialCompleto();
+    res.set({
+      'Content-Type': 'image/png',
+      'Content-Disposition': `attachment; filename="qr-${id}.png"`,
+    });
+
+    fs.createReadStream(qrFilePath).pipe(res);
   }
 }
