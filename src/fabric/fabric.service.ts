@@ -14,10 +14,9 @@ export class FabricService implements OnModuleDestroy {
   }
 
   async connectToFabric() {
-    const PORT_LOCAL = 'localhost:7051';
-    const PORT_PROD = '0.tcp.sa.ngrok.io:15418'; // Ajusta según ngrok
-    const IS_PROD = process.env.IS_PROD === 'true';
-    const FABRIC_HOST = IS_PROD ? PORT_PROD : PORT_LOCAL;
+    // Host y puerto de variables de entorno
+    const FABRIC_HOST = process.env.FABRIC_HOST || 'localhost';
+    const FABRIC_PORT = process.env.FABRIC_PORT || '7051';
 
     const clientCert = fs.readFileSync(path.join(__dirname, '../../fabric-config/User1@org1.example.com-cert.pem'));
     const clientKey = fs.readFileSync(path.join(__dirname, '../../fabric-config/priv_sk'));
@@ -26,7 +25,9 @@ export class FabricService implements OnModuleDestroy {
     const tlsCredentials = grpc.credentials.createSsl(tlsCert, null, null, {
       checkServerIdentity: () => undefined, // Ignora validación hostname
     });
-    const client = new grpc.Client(FABRIC_HOST, tlsCredentials);
+
+    const endpoint = `${FABRIC_HOST}:${FABRIC_PORT}`;
+    const client = new grpc.Client(endpoint, tlsCredentials);
 
     const identity: Identity = {
       mspId: 'Org1MSP',
@@ -41,9 +42,9 @@ export class FabricService implements OnModuleDestroy {
         identity,
         signer,
       });
-      console.log('Conexión a Fabric establecida');
+      console.log(`✅ Conexión a Fabric establecida en ${endpoint}`);
     } catch (error) {
-      console.error('Error conectando a Fabric:', error);
+      console.error('❌ Error conectando a Fabric:', error);
       throw new Error('No se pudo conectar a la red Fabric');
     }
   }

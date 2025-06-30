@@ -30,11 +30,12 @@ Guía para levantar y probar el backend (`trazabilidad-backend`) basado en NestJ
 
 3. **Configurar .env**:
    ```bash
-   echo "IS_PROD=false
-
+   echo "
    CORS_ORIGIN_1=https://trazabilidad-frontend-heroui-be37at4ld-deivireps-projects.vercel.app
    CORS_ORIGIN_2=https://trazabilidad-frontend-heroui.vercel.app
    CORS_ORIGIN_3=http://localhost:3001
+   FABRIC_HOST=localhost
+   FABRIC_PORT=7051
    PORT=3000" > .env
    ```
 
