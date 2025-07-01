@@ -9,7 +9,8 @@ async function bootstrap() {
     allowedOrigins.push(process.env[`CORS_ORIGIN_${index}`] as string );
     index++;
   }
-
+  console.log("CORSSSSSSSSSSSSSSS")
+console.log(allowedOrigins);
   // Habilitar CORS
   app.enableCors({
     origin: allowedOrigins,
