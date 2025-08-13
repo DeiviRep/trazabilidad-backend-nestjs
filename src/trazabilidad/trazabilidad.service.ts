@@ -4,12 +4,16 @@ import * as QRCode from 'qrcode';
 import * as fs from 'fs';
 import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class TrazabilidadService {
   private readonly qrDir = path.join(__dirname, '../../qr-images');
 
-  constructor(private readonly fabricService: FabricService) {
+  constructor(
+    private readonly fabricService: FabricService,
+    private readonly configService: ConfigService,
+  ) {
     if (!fs.existsSync(this.qrDir)) {
       fs.mkdirSync(this.qrDir, { recursive: true });
     }
@@ -121,7 +125,7 @@ export class TrazabilidadService {
       throw new Error(`No se encontró historial para el dispositivo ${id}`);
     }
 
-    const frontendBase = process.env.FRONTEND_BASE_URL || 'http://localhost:3001';
+    const frontendBase = this.configService.get<string>('FRONTEND_BASE_URL') || 'http://localhost:3001';
     const frontendUrl = `${frontendBase}/trazabilidad/historial/${encodeURIComponent(id)}`;
 
     const qrFilePath = path.join(this.qrDir, `qr-${id}.png`);

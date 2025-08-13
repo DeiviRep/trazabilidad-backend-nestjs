@@ -4,13 +4,14 @@ import * as grpc from '@grpc/grpc-js';
 import * as fs from 'fs';
 import * as crypto from 'crypto';
 import * as path from 'path';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class FabricService implements OnModuleInit, OnModuleDestroy {
   private gateway: Gateway;
   private contract: Contract | null = null;
 
-  constructor() {}
+  constructor(private configService: ConfigService) {}
 
   async onModuleInit() {
     await this.connectToFabric();
@@ -19,14 +20,18 @@ export class FabricService implements OnModuleInit, OnModuleDestroy {
   }
 
   async connectToFabric() {
-    const FABRIC_HOST = process.env.FABRIC_HOST || 'localhost';
-    const FABRIC_PORT = process.env.FABRIC_PORT || '7051';
+    const FABRIC_HOST = this.configService.get<string>('FABRIC_HOST') || 'localhost';
+    const FABRIC_PORT = this.configService.get<string>('FABRIC_PORT') || '7051';
+    const FABRIC_CONFIG_PATH = this.configService.get<string>('FABRIC_CONFIG_PATH');
+    const FABRIC_CHANNEL = this.configService.get<string>('FABRIC_CHANNEL') || 'mychannel';
+    const CHAINCODE_NAME = this.configService.get<string>('CHAINCODE_NAME') || 'traceability';
     // Rutas relativas: espera que tengas la carpeta fabric-config en la raiz del backend
-    const base = process.env.FABRIC_CONFIG_PATH || path.resolve(__dirname, '../../fabric-config');
+    const base = FABRIC_CONFIG_PATH || path.resolve(__dirname, '../../fabric-config');
 
     const clientCertPath = path.join(base, 'User1@org1.example.com-cert.pem');
     const clientKeyPath = path.join(base, 'priv_sk');
     const tlsCertPath = path.join(base, 'ca.crt');
+    const mspId = this.configService.get<string>('FABRIC_MSPID') || 'Org1MSP';
 
     if (!fs.existsSync(clientCertPath) || !fs.existsSync(clientKeyPath) || !fs.existsSync(tlsCertPath)) {
       console.error('No se encontraron las credenciales de Fabric en', base);
@@ -45,7 +50,7 @@ export class FabricService implements OnModuleInit, OnModuleDestroy {
     const client = new grpc.Client(endpoint, tlsCredentials);
 
     const identity: Identity = {
-      mspId: 'Org1MSP',
+      mspId: mspId,
       credentials: clientCert,
     };
 
@@ -59,8 +64,8 @@ export class FabricService implements OnModuleInit, OnModuleDestroy {
       });
 
       // Mantener la referencia al contrato para listeners si hace falta
-      const network = this.gateway.getNetwork(process.env.FABRIC_CHANNEL || 'mychannel');
-      this.contract = network.getContract(process.env.CHAINCODE_NAME || 'traceability');
+      const network = this.gateway.getNetwork(FABRIC_CHANNEL);
+      this.contract = network.getContract(CHAINCODE_NAME);
 
       console.log(`✅ Conexión a Fabric establecida en ${endpoint}`);
     } catch (error) {
@@ -72,8 +77,8 @@ export class FabricService implements OnModuleInit, OnModuleDestroy {
   async invoke(functionName: string, ...args: string[]): Promise<string> {
     if (!this.gateway) throw new Error('Gateway no inicializado');
     try {
-      const network = this.gateway.getNetwork(process.env.FABRIC_CHANNEL || 'mychannel');
-      const contract = network.getContract(process.env.CHAINCODE_NAME || 'traceability');
+      const network = this.gateway.getNetwork(this.configService.get<string>('FABRIC_CHANNEL') || 'mychannel');
+      const contract = network.getContract(this.configService.get<string>('CHAINCODE_NAME') || 'traceability');
       const result = await contract.submitTransaction(functionName, ...args);
       return Buffer.from(result).toString('utf8');
     } catch (error) {
@@ -85,8 +90,8 @@ export class FabricService implements OnModuleInit, OnModuleDestroy {
   async query(functionName: string, ...args: string[]): Promise<string> {
     if (!this.gateway) throw new Error('Gateway no inicializado');
     try {
-      const network = this.gateway.getNetwork(process.env.FABRIC_CHANNEL || 'mychannel');
-      const contract = network.getContract(process.env.CHAINCODE_NAME || 'traceability');
+      const network = this.gateway.getNetwork(this.configService.get<string>('FABRIC_CHANNEL') || 'mychannel');
+      const contract = network.getContract(this.configService.get<string>('CHAINCODE_NAME') || 'traceability');
       const result = await contract.evaluateTransaction(functionName, ...args);
       return Buffer.from(result).toString('utf8');
     } catch (error) {

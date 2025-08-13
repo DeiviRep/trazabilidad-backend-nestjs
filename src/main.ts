@@ -1,16 +1,17 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
+import { ConfigService } from '@nestjs/config';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  const configService = app.get(ConfigService);
+
   const allowedOrigins: string[] = [];
   let index = 1;
-  while (process.env[`CORS_ORIGIN_${index}`]) {
-    allowedOrigins.push(process.env[`CORS_ORIGIN_${index}`] as string );
+  while (configService.get<string>(`CORS_ORIGIN_${index}`)) {
+    allowedOrigins.push(configService.get<string>(`CORS_ORIGIN_${index}`)|| '');
     index++;
   }
-  console.log("CORSSSSSSSSSSSSSSS")
-console.log(allowedOrigins);
   // Habilitar CORS
   app.enableCors({
     origin: allowedOrigins,
@@ -18,6 +19,6 @@ console.log(allowedOrigins);
     allowedHeaders: 'Content-Type, Accept',
   });
 
-  await app.listen(process.env.PORT ?? 3000);
+  await app.listen(configService.get<number>('PORT') ?? 3000);
 }
 bootstrap();
