@@ -3,20 +3,56 @@ import { FabricService } from '../fabric/fabric.service';
 import * as QRCode from 'qrcode';
 import * as fs from 'fs';
 import * as path from 'path';
+import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class TrazabilidadService {
-  private readonly qrDir = path.join(__dirname, '../../qr-images'); // Directorio para guardar QRs
+  private readonly qrDir = path.join(__dirname, '../../qr-images');
 
   constructor(private readonly fabricService: FabricService) {
-    // Crear el directorio si no existe
     if (!fs.existsSync(this.qrDir)) {
       fs.mkdirSync(this.qrDir, { recursive: true });
     }
   }
 
-  async registrarDispositivo(id: string, modelo: string, marca: string, origen: string, latitud: string, longitud: string, evento: string) {
-    return this.fabricService.invoke('registrarDispositivo', id, modelo, marca, origen, latitud, longitud, evento);
+  // registrarDispositivo con parámetros opcionales
+  async registrarDispositivo(
+    id: string | null,
+    modelo: string,
+    marca: string,
+    origen: string,
+    latitud: string,
+    longitud: string,
+    evento: string,
+    loteId = '',
+    actor = '',
+    rol = '',
+    documentos: any[] = [],
+    codigoDocumentos: object = {},
+    hashDocumentos: any[] = [],
+    urlPublica = ''
+  ) {
+    const documentosJSON = JSON.stringify(documentos || []);
+    const codigoDocumentosJSON = JSON.stringify(codigoDocumentos || {});
+    const hashDocumentosJSON = JSON.stringify(hashDocumentos || []);
+    const deviceId = id && id.trim().length > 0 ? id : uuidv4();
+    return this.fabricService.invoke(
+      'registrarDispositivo',
+      deviceId,
+      modelo,
+      marca,
+      origen,
+      latitud,
+      longitud,
+      evento,
+      loteId,
+      actor,
+      rol,
+      documentosJSON,
+      codigoDocumentosJSON,
+      hashDocumentosJSON,
+      urlPublica
+    );
   }
 
   async consultarDispositivo(id: string) {
@@ -24,8 +60,42 @@ export class TrazabilidadService {
     return JSON.parse(result);
   }
 
-  async actualizarDispositivo(id: string, modelo: string, marca: string, origen: string, latitud: string, longitud: string, evento: string) {
-    return this.fabricService.invoke('actualizarDispositivo', id, modelo, marca, origen, latitud, longitud, evento);
+  async actualizarDispositivo(
+    id: string,
+    modelo: string,
+    marca: string,
+    origen: string,
+    latitud: string,
+    longitud: string,
+    evento: string,
+    actor = '',
+    rol = '',
+    documentos: any[] = [],
+    codigoDocumentos: object = {},
+    hashDocumentos: any[] = [],
+    urlPublica = '',
+    forceUpdate = false
+  ) {
+    const documentosJSON = JSON.stringify(documentos || []);
+    const codigoDocumentosJSON = JSON.stringify(codigoDocumentos || {});
+    const hashDocumentosJSON = JSON.stringify(hashDocumentos || []);
+    return await this.fabricService.invoke(
+      'actualizarDispositivo',
+      id,
+      modelo,
+      marca,
+      origen,
+      latitud,
+      longitud,
+      evento,
+      actor,
+      rol,
+      documentosJSON,
+      codigoDocumentosJSON,
+      hashDocumentosJSON,
+      urlPublica,
+      forceUpdate ? 'true' : 'false'
+    );
   }
 
   async listarDispositivos() {
@@ -38,27 +108,30 @@ export class TrazabilidadService {
     return JSON.parse(result);
   }
 
+  async listarPorLote(loteId: string) {
+    const result = await this.fabricService.query('listarPorLote', loteId);
+    return JSON.parse(result);
+  }
+
+  // Generar QR: ahora incluirá URL que el frontend pueda resolver
   async generarQR(id: string): Promise<string> {
-    // Obtener el historial del dispositivo
+    // Obtener el historial del dispositivo para asegurar existencia
     const historial = await this.obtenerHistorial(id);
     if (!historial || historial.length === 0) {
       throw new Error(`No se encontró historial para el dispositivo ${id}`);
     }
 
-    // URL que se codificará en el QR
-    const frontendUrl = `http://localhost:3001/trazabilidad/historial/${id}`; // Ajusta según tu frontend
+    const frontendBase = process.env.FRONTEND_BASE_URL || 'http://localhost:3001';
+    const frontendUrl = `${frontendBase}/trazabilidad/historial/${encodeURIComponent(id)}`;
 
-    // Ruta donde se guardará el QR
     const qrFilePath = path.join(this.qrDir, `qr-${id}.png`);
-
-    // Generar el QR y guardarlo en disco
     await QRCode.toFile(qrFilePath, frontendUrl, {
       type: 'png',
       width: 300,
       errorCorrectionLevel: 'H',
     });
 
-    // Devolver la URL para acceder al QR
+    // Devuelve la ruta relativa servida por el backend (ServeStatic)
     return `/trazabilidad/qr-image/${id}`;
   }
 }
