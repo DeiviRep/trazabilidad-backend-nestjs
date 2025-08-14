@@ -1,13 +1,19 @@
-import { Controller, Get, Post, Body, Param, Res, Req, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Res, UseGuards, Req, HttpCode, HttpStatus } from '@nestjs/common';
 import { TrazabilidadService } from './trazabilidad.service';
 import { Response, Request } from 'express';
 import * as path from 'path';
 import * as fs from 'fs';
+import { AuthGuard } from '@nestjs/passport';
+import { ConfigService } from '@nestjs/config';
 
 @Controller('trazabilidad')
 export class TrazabilidadController {
-  constructor(private readonly trazabilidadService: TrazabilidadService) {}
+  constructor(
+    private readonly trazabilidadService: TrazabilidadService,
+    private readonly configService: ConfigService,
+  ) {}
 
+  @UseGuards(AuthGuard('jwt'))
   @Post('registrar')
   @HttpCode(HttpStatus.CREATED)
   async registrarDispositivo(
@@ -29,8 +35,8 @@ export class TrazabilidadController {
     }
   ) {
     // Extraer actor/rol desde encabezados o token (por ahora headers X-User, X-Role)
-    const actor = (req.headers['x-user'] as string) || 'system';
-    const rol = (req.headers['x-role'] as string) || 'backend';
+    const actor = (req as any).user?.nombre || 'desconocido';
+    const rol = (req as any).user?.rol || null;
 
     const resInvoke = await this.trazabilidadService.registrarDispositivo(
       body.id,
@@ -42,7 +48,7 @@ export class TrazabilidadController {
       body.evento,
       body.loteId || '',
       actor,
-      rol,
+      rol || '',
       body.documentos || [],
       body.codigoDocumentos || {},
       body.hashDocumentos || [],
@@ -56,6 +62,7 @@ export class TrazabilidadController {
     return this.trazabilidadService.consultarDispositivo(id);
   }
 
+  @UseGuards(AuthGuard('jwt'))
   @Post('actualizar')
   async actualizarDispositivo(
     @Req() req: Request,
@@ -75,8 +82,8 @@ export class TrazabilidadController {
       forceUpdate?: boolean;
     }
   ) {
-    const actor = (req.headers['x-user'] as string) || 'system';
-    const rol = (req.headers['x-role'] as string) || 'backend';
+    const actor = (req as any).user?.nombre || 'desconocido';
+    const rol = (req as any).user?.rol || null;
 
     const resInvoke = await this.trazabilidadService.actualizarDispositivo(
       body.id,
@@ -112,11 +119,13 @@ export class TrazabilidadController {
     return this.trazabilidadService.listarPorLote(loteId);
   }
 
+  @UseGuards(AuthGuard('jwt'))
   @Get('qr/:id')
   async generarQR(@Param('id') id: string) {
     const qrUrl = await this.trazabilidadService.generarQR(id);
-    const base = process.env.BACKEND_BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
-    return { qrUrl: `${base}${qrUrl}` };
+    const port = this.configService.get<number>('PORT') || 3000;
+    const backendBase = this.configService.get<string>('BACKEND_BASE_URL') || `http://localhost:${port}`;
+    return { qrUrl: `${backendBase}${qrUrl}` };
   }
 
   @Get('qr-image/:id')
