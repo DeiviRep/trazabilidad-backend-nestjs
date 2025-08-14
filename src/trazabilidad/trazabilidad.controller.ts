@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Res, UseGuards, Req, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Res, UseGuards, Req, HttpCode, HttpStatus, Query } from '@nestjs/common';
 import { TrazabilidadService } from './trazabilidad.service';
 import { Response, Request } from 'express';
 import * as path from 'path';
@@ -60,6 +60,17 @@ export class TrazabilidadController {
   @Get('consultar/:id')
   async consultarDispositivo(@Param('id') id: string) {
     return this.trazabilidadService.consultarDispositivo(id);
+  }
+
+  @Get('buscar')
+  async buscar(
+    @Query('evento') evento?: string,
+    @Query('loteId') loteId?: string,
+    @Query('actor') actor?: string,
+    @Query('fechaInicio') fechaInicio?: string,
+    @Query('fechaFin') fechaFin?: string,
+  ) {
+    return this.trazabilidadService.buscar({ evento, loteId, actor, fechaInicio, fechaFin });
   }
 
   @UseGuards(AuthGuard('jwt'))

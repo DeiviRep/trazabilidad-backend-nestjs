@@ -1,4 +1,4 @@
-import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleDestroy, OnModuleInit, Logger } from '@nestjs/common';
 import { Gateway, connect, Identity, Signer, signers, Contract } from '@hyperledger/fabric-gateway';
 import * as grpc from '@grpc/grpc-js';
 import * as fs from 'fs';
@@ -10,8 +10,17 @@ import { ConfigService } from '@nestjs/config';
 export class FabricService implements OnModuleInit, OnModuleDestroy {
   private gateway: Gateway;
   private contract: Contract | null = null;
+  private readonly logger = new Logger(FabricService.name);
 
-  constructor(private configService: ConfigService) {}
+  private readonly timeoutMs: number;
+  private readonly retryMs: number;
+  private readonly maxRetries: number;
+
+  constructor(private configService: ConfigService) {
+    this.timeoutMs = this.configService.get<number>('FABRIC_TIMEOUT_MS') || 10000;
+    this.retryMs = this.configService.get<number>('FABRIC_RETRY_MS') || 2000;
+    this.maxRetries = this.configService.get<number>('FABRIC_MAX_RETRIES') || 2;
+  }
 
   async onModuleInit() {
     await this.connectToFabric();
@@ -35,7 +44,7 @@ export class FabricService implements OnModuleInit, OnModuleDestroy {
 
     if (!fs.existsSync(clientCertPath) || !fs.existsSync(clientKeyPath) || !fs.existsSync(tlsCertPath)) {
       console.error('No se encontraron las credenciales de Fabric en', base);
-      throw new Error('Credenciales de Fabric faltantes. Verifica FABRIC_CONFIG_PATH o coloca los archivos en fabric-config/');
+      throw new Error(`./fabric-config Credenciales de Fabric faltantes en ${base}`);
     }
 
     const clientCert = fs.readFileSync(clientCertPath);
@@ -66,47 +75,68 @@ export class FabricService implements OnModuleInit, OnModuleDestroy {
       // Mantener la referencia al contrato para listeners si hace falta
       const network = this.gateway.getNetwork(FABRIC_CHANNEL);
       this.contract = network.getContract(CHAINCODE_NAME);
-
-      console.log(`✅ Conexión a Fabric establecida en ${endpoint}`);
+      this.logger.log(`✅ Conexión a Fabric establecida en ${endpoint}`);
     } catch (error) {
-      console.error('❌ Error conectando a Fabric:', error);
+      this.logger.error('❌ Error conectando a Fabric', error);
       throw new Error('No se pudo conectar a la red Fabric');
     }
   }
 
-  async invoke(functionName: string, ...args: string[]): Promise<string> {
-    if (!this.gateway) throw new Error('Gateway no inicializado');
+  private async withTimeout<T>(promise: Promise<T>, label: string): Promise<T> {
+    let timeoutId: NodeJS.Timeout | null = null;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeoutId = setTimeout(() => reject(new Error(`${label} timeout (${this.timeoutMs} ms)`)), this.timeoutMs);
+    });
     try {
+      const result = await Promise.race([promise, timeoutPromise]);
+      if (timeoutId) clearTimeout(timeoutId);
+      return result as T;
+    } catch (err) {
+      if (timeoutId) clearTimeout(timeoutId);
+      throw err;
+    }
+  }
+
+  private async tryRequest<T>(fn: () => Promise<T>, label: string): Promise<T> {
+    let lastErr: any;
+    for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
+      try {
+        return await this.withTimeout(fn(), label);
+      } catch (error) {
+        lastErr = error;
+        this.logger.warn(`${label} fallo intento ${attempt + 1}/${this.maxRetries + 1}: ${error.message}`);
+        await this.connectToFabric();
+        if (attempt < this.maxRetries) await new Promise(r => setTimeout(r, this.retryMs));
+      }
+    }
+    throw lastErr;
+  }
+
+  async invoke(functionName: string, ...args: string[]): Promise<string> {
+    return this.tryRequest(async () => {
       const network = this.gateway.getNetwork(this.configService.get<string>('FABRIC_CHANNEL') || 'mychannel');
       const contract = network.getContract(this.configService.get<string>('CHAINCODE_NAME') || 'traceability');
       const result = await contract.submitTransaction(functionName, ...args);
       return Buffer.from(result).toString('utf8');
-    } catch (error) {
-      console.error(`Error en invoke (${functionName}):`, error);
-      throw new Error(`Fallo al ejecutar ${functionName}: ${error.message}`);
-    }
+    }, `invoke(${functionName})`);
   }
 
   async query(functionName: string, ...args: string[]): Promise<string> {
-    if (!this.gateway) throw new Error('Gateway no inicializado');
-    try {
+    return this.tryRequest(async () => {
       const network = this.gateway.getNetwork(this.configService.get<string>('FABRIC_CHANNEL') || 'mychannel');
       const contract = network.getContract(this.configService.get<string>('CHAINCODE_NAME') || 'traceability');
       const result = await contract.evaluateTransaction(functionName, ...args);
       return Buffer.from(result).toString('utf8');
-    } catch (error) {
-      console.error(`Error en query (${functionName}):`, error);
-      throw new Error(`Fallo al consultar ${functionName}: ${error.message}`);
-    }
+    }, `query(${functionName})`);
   }
 
   onModuleDestroy() {
     if (this.gateway) {
       try {
         this.gateway.close();
-        console.log('Gateway cerrado');
+        this.logger.log('Gateway cerrado');
       } catch (err) {
-        console.warn('Error cerrando gateway:', err);
+        this.logger.warn('Error cerrando gateway:', err);
       }
     }
   }

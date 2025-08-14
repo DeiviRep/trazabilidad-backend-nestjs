@@ -10,6 +10,10 @@ import { Usuario } from './usuarios/usuario.entity';
 import { Rol } from './usuarios/rol.entity';
 import { UsuariosModule } from './usuarios/usuarios.module';
 import { AuthModule } from './auth/auth.module';
+import { Auditoria } from './auditoria/auditoria.entity';
+import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
+import { AuditoriaInterceptor } from './auditoria/auditoria.interceptor';
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 
 @Module({
   imports: [
@@ -27,10 +31,11 @@ import { AuthModule } from './auth/auth.module';
         username: config.get<string>('DB_USERNAME'),
         password: config.get<string>('DB_PASSWORD'),
         database: config.get<string>('DB_DATABASE'),
-        entities: [Usuario, Rol],
+        entities: [Usuario, Rol, Auditoria],
         synchronize: true, // ⚠️ En producción poner false
       }),
     }),
+    TypeOrmModule.forFeature([Auditoria]),
     UsuariosModule,
     AuthModule,
     TrazabilidadModule,
@@ -40,6 +45,16 @@ import { AuthModule } from './auth/auth.module';
     }),
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: AuditoriaInterceptor,
+    },
+    {
+      provide: APP_FILTER,
+      useClass: HttpExceptionFilter,
+    },
+  ],
 })
 export class AppModule {}

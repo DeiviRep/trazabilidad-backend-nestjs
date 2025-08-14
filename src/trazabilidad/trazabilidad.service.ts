@@ -117,6 +117,23 @@ export class TrazabilidadService {
     return JSON.parse(result);
   }
 
+  async buscar(params: { evento?: string; loteId?: string; actor?: string; fechaInicio?: string; fechaFin?: string; }) {
+    const dispositivos = await this.listarDispositivos();
+    const start = params.fechaInicio ? new Date(params.fechaInicio).getTime() : null;
+    const end = params.fechaFin ? new Date(params.fechaFin).getTime() : null;
+    
+    return dispositivos.filter((d: any) => {
+      const okEvento = params.evento ? d.evento === params.evento : true;
+      const okLote = params.loteId ? d.loteId === params.loteId : true;
+      const okActor = params.actor ? d.actor === params.actor : true;
+      const okFecha = (start || end) ? (() => {
+        const t = d.timestamp ? new Date(d.timestamp).getTime() : null;
+        return t && (!start || t >= start) && (!end || t <= end);
+      })() : true;
+      return okEvento && okLote && okActor && okFecha;
+    });
+  }
+
   // Generar QR: ahora incluirá URL que el frontend pueda resolver
   async generarQR(id: string): Promise<string> {
     // Obtener el historial del dispositivo para asegurar existencia
