@@ -12,11 +12,21 @@ async function bootstrap() {
     allowedOrigins.push(configService.get<string>(`CORS_ORIGIN_${index}`)|| '');
     index++;
   }
+  console.log(allowedOrigins);
   // Habilitar CORS
   app.enableCors({
     origin: allowedOrigins,
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-    allowedHeaders: 'Content-Type, Accept',
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'X-User',
+      'X-Role',
+      'Accept',
+      'Origin',
+      'X-Requested-With'
+    ],
+    credentials: true,
   });
 
   await app.listen(configService.get<number>('PORT') ?? 3000);
