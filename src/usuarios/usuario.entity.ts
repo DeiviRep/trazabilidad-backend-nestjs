@@ -1,7 +1,15 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
-import { Rol } from './rol.entity';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  JoinColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
+} from "typeorm"
+import { Rol } from "./rol.entity"
 
-@Entity()
+@Entity("usuarios")
 export class Usuario {
   @PrimaryGeneratedColumn()
   id: number;
@@ -15,7 +23,26 @@ export class Usuario {
   @Column()
   passwordHash: string;
 
-  @ManyToOne(() => Rol, (rol) => rol.usuarios, { nullable: true, eager: true })
-  @JoinColumn({ name: 'rol_id' })
+  @Column({ default: true })
+  activo: boolean;
+
+  @Column({ nullable: true })
+  telefono: string;
+
+  @Column({ nullable: true })
+  organizacion: string;
+
+  @CreateDateColumn()
+  fechaCreacion: Date;
+
+  @UpdateDateColumn()
+  fechaActualizacion: Date;
+
+  @ManyToOne(
+    () => Rol,
+    (rol) => rol.usuarios,
+    { eager: true },
+  )
+  @JoinColumn({ name: "rolId" })
   rol?: Rol | null;
 }
