@@ -15,7 +15,7 @@ export class EmbarqueDto {
 
   @IsString()
   @IsNotEmpty()
-  puertoSalida: string;
+  puntoControl: string;
 
   @IsLatitude()
   latitud: string;

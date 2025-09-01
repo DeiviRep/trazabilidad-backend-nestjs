@@ -13,7 +13,7 @@ const PERMISOS_ROL = {
   TRANSPORTISTA: ["actualizar_embarque", "actualizar_desembarque"],
   ADUANA_EXTRANJERA: ["actualizar_desembarque"],
   ADUANA_BOLIVIA: ["nacionalizar"],
-  COMERCIANTE: ["gestionar_distribucion"],
+  COMERCIANTE: ["gestionar_distribucion","producto_adquirido"],
   CONSUMIDOR: ["consultar_qr"],
   ADMIN: [
     "registrar_producto",
@@ -21,6 +21,7 @@ const PERMISOS_ROL = {
     "actualizar_desembarque",
     "nacionalizar",
     "gestionar_distribucion",
+    "producto_adquirido",
     "consultar_historial",
     "gestionar_usuarios",
   ],
@@ -95,7 +96,7 @@ export class UsuariosService implements OnModuleInit {
 
   async findByEmail(email: string): Promise<Usuario | null> {
     return this.usuarioRepo.findOne({
-      where: { email },
+      where: { email:email },
       relations: ["rol"],
     })
   }

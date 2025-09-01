@@ -10,8 +10,12 @@ export class NacionalizacionDto {
   @IsNotEmpty()
   dim: string; // Declaración de Importación de Mercancías
 
+  @IsString()
+  @IsNotEmpty()
+  puntoControl: string;
+
   @IsNumber()
-  valorCif: number;
+  valorCIF: number;
 
   @IsNumber()
   arancel: number;

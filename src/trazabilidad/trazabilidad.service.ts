@@ -29,14 +29,14 @@ export class TrazabilidadService {
     this.FRONTEND = this.configService.get<string>('FRONTEND_BASE_URL') || 'http://localhost:3001';
   }
 
-  // ---------- Helpers ----------
-  private eventos = {
-    REGISTRO: 'Registro',
-    EMBARQUE: 'Embarque',
-    DESEMBARQUE: 'Desembarque',
-    NACIONALIZACION: 'Nacionalización',
-    DISTRIBUCION: 'Distribución',
-    ADQUIRIDO: 'ConsumidorFinal',
+  // ---------- Estados del nuevo contrato ----------
+  private estados = {
+    REGISTRADO: 'REGISTRADO',
+    EMBARCADO: 'EMBARCADO',
+    DESEMBARCADO: 'DESEMBARCADO',
+    NACIONALIZADO: 'NACIONALIZADO',
+    EN_DISTRIBUCION: 'EN_DISTRIBUCION',
+    PRODUCTO_ADQUIRIDO: 'PRODUCTO_ADQUIRIDO'
   } as const;
 
   private buildUrlLote(uuidLote: string) {
@@ -45,114 +45,122 @@ export class TrazabilidadService {
 
   // ---------- Registro ----------
   async registro(dto: RegistroDto, actor = '', rol = '') {
-    const deviceId = dto.id && dto.id.trim().length > 0 ? dto.id : uuidv4();
+    const productoId = dto.id && dto.id.trim().length > 0 ? dto.id : uuidv4();
     const uuidLote = dto.uuidLote && dto.uuidLote.trim().length > 0 ? dto.uuidLote : uuidv4();
     const urlLote = this.buildUrlLote(uuidLote);
 
-    const documentosMetaJSON = JSON.stringify(dto.documentosMeta || []);
-    const documentosCodigoJSON = JSON.stringify(dto.documentosCodigo || {});
-    const documentosHashJSON = JSON.stringify(dto.documentosHash || []);
+    // Crear lote placeholder (número secuencial o basado en marca/modelo)
+    const lote = `LOTE_${dto.marca}-${dto.modelo}-${Date.now().toString().slice(-6)}`;
 
     const result = await this.fabricService.invoke(
-      'registrarDispositivo',
-      deviceId,
-      dto.modelo,
+      'registrarProducto',
+      productoId,
+      lote,
+      uuidLote,
       dto.marca,
+      dto.modelo,
       dto.imeiSerial,
-      dto.origenPais,
+      dto.puntoControl,
       dto.latitud,
       dto.longitud,
-      this.eventos.REGISTRO,
-      uuidLote,
-      actor,
-      rol || '',
-      urlLote,              // <= importante
-      JSON.stringify({}),   // detalles libres (no requeridos en registro)
-      documentosMetaJSON,
-      documentosCodigoJSON,
-      documentosHashJSON,
+      urlLote
     );
     return JSON.parse(result);
   }
 
   async registroLote(dto: RegistroLoteDto, actor = '', rol = '') {
-    const uuidLote = dto.uuidLote;
+    const uuidLote = dto.uuidLote && dto.uuidLote.trim().length > 0 ? dto.uuidLote : uuidv4();
     const urlLote = this.buildUrlLote(uuidLote);
+    const lote = `LOTE-${Date.now().toString().slice(-6)}`;
     return Promise.all(
-      dto.dispositivos.map((d) =>
-        this.fabricService.invoke(
-          'registrarDispositivo',
-          d.id && d.id.trim().length > 0 ? d.id : uuidv4(),
-          d.modelo,
+      dto.dispositivos.map((d) => {
+        const productoId = d.id && d.id.trim().length > 0 ? d.id : uuidv4();
+        
+        return this.fabricService.invoke(
+          'registrarProducto',
+          productoId,
+          lote,
+          uuidLote,
           d.marca,
+          d.modelo,
           d.imeiSerial,
-          d.origenPais,
+          d.puntoControl,
           d.latitud,
           d.longitud,
-          this.eventos.REGISTRO,
-          uuidLote,
-          actor,
-          rol || '',
-          urlLote,
-          JSON.stringify({}),
-          JSON.stringify(d.documentosMeta || []),
-          JSON.stringify(d.documentosCodigo || {}),
-          JSON.stringify(d.documentosHash || []),
-        ).then(JSON.parse)
-      )
+          urlLote
+        ).then(JSON.parse);
+      })
     );
   }
 
   // ---------- Embarque ----------
   async embarque(dto: EmbarqueDto, actor = '', rol = '') {
-    const detalles = {
+    const datosEvento = {
       tipoTransporte: dto.tipoTransporte,
-      nroContenedor: dto.nroContenedor || '',
-      puertoSalida: dto.puertoSalida,
+      contenedor: dto.nroContenedor,
+      puntoControl: dto.puntoControl,
     };
+    
     const res = await this.fabricService.invoke(
-      'actualizarDispositivo',
+      'agregarEventoProducto',
       dto.id,
-      '', '', '',                            // modelo, marca, origenPais ignorados
+      this.estados.EMBARCADO,
+      `${actor} - ${rol}`,
       dto.latitud,
       dto.longitud,
-      this.eventos.EMBARQUE,
-      actor,
-      rol || '',
-      JSON.stringify(dto.documentosMeta || []),
-      JSON.stringify(dto.documentosCodigo || {}),
-      JSON.stringify(dto.documentosHash || []),
-      'false',
-      JSON.stringify(detalles),
+      JSON.stringify(datosEvento)
     );
     return JSON.parse(res);
   }
 
   async embarqueLote(dto: EmbarqueLoteDto, actor = '', rol = '') {
-    return Promise.all(dto.dispositivos.map(d => this.embarque(d, actor, rol)));
+    const datosEvento = {
+      tipoTransporte: dto.dispositivos[0]?.tipoTransporte || '',
+      contenedor: dto.dispositivos[0]?.nroContenedor || '',
+      puntoControl: dto.dispositivos[0]?.puntoControl || ''
+    };
+
+    // Usar evento masivo si todos los dispositivos tienen el mismo lote
+    const primerDispositivo = dto.dispositivos[0];
+    if (primerDispositivo && dto.dispositivos.length > 1) {
+      try {
+        const producto = await this.consultarProducto(primerDispositivo.id);
+        const uuidLote = producto.uuidLote;
+        
+        const res = await this.fabricService.invoke(
+          'agregarEventoLoteMasivo',
+          uuidLote,
+          this.estados.EMBARCADO,
+          `${actor} - ${rol}`,
+          primerDispositivo.latitud,
+          primerDispositivo.longitud,
+          JSON.stringify(datosEvento)
+        );
+        return JSON.parse(res);
+      } catch (error) {
+        // Si falla el evento masivo, procesar individualmente
+      }
+    }
+
+    return Promise.all(dto.dispositivos.map(dispositivo => this.embarque(dispositivo, actor, rol)));
   }
 
   // ---------- Desembarque ----------
   async desembarque(dto: DesembarqueDto, actor = '', rol = '') {
-    const detalles = {
-      puertoExtranjero: dto.puertoExtranjero,
+    const datosEvento = {
+      puntoControl: dto.puntoControl,
       integridad: !!dto.integridad,
-      descripcionIntegridad: dto.descripcionIntegridad || '',
+      descripcionIntegridad: dto.descripcionIntegridad || ''
     };
+    
     const res = await this.fabricService.invoke(
-      'actualizarDispositivo',
+      'agregarEventoProducto',
       dto.id,
-      '', '', '',
+      this.estados.DESEMBARCADO,
+      `${actor} - ${rol}`,
       dto.latitud,
       dto.longitud,
-      this.eventos.DESEMBARQUE,
-      actor,
-      rol || '',
-      JSON.stringify(dto.documentosMeta || []),
-      JSON.stringify(dto.documentosCodigo || {}),
-      JSON.stringify(dto.documentosHash || []),
-      'false',
-      JSON.stringify(detalles),
+      JSON.stringify(datosEvento)
     );
     return JSON.parse(res);
   }
@@ -163,28 +171,24 @@ export class TrazabilidadService {
 
   // ---------- Nacionalización ----------
   async nacionalizacion(dto: NacionalizacionDto, actor = '', rol = '') {
-    const detalles = {
+    const datosEvento = {
+      puntoControl: dto.puntoControl,
       dim: dto.dim,
-      valorCif: dto.valorCif,
+      valorCIF: dto.valorCIF,
+      totalPagado: dto.totalPagado,
       arancel: dto.arancel,
       iva: dto.iva,
       ice: dto.ice || 0,
-      totalPagado: dto.totalPagado,
     };
+    
     const res = await this.fabricService.invoke(
-      'actualizarDispositivo',
+      'agregarEventoProducto',
       dto.id,
-      '', '', '',
+      this.estados.NACIONALIZADO,
+      `${actor} - ${rol}`,
       dto.latitud,
       dto.longitud,
-      this.eventos.NACIONALIZACION,
-      actor,
-      rol || '',
-      JSON.stringify(dto.documentosMeta || []),
-      JSON.stringify(dto.documentosCodigo || {}),
-      JSON.stringify(dto.documentosHash || []),
-      'false',
-      JSON.stringify(detalles),
+      JSON.stringify(datosEvento)
     );
     return JSON.parse(res);
   }
@@ -195,24 +199,19 @@ export class TrazabilidadService {
 
   // ---------- Distribución ----------
   async distribucion(dto: DistribucionDto, actor = '', rol = '') {
-    const detalles = {
+    const datosEvento = {
       comerciante: dto.comerciante,
-      deposito: dto.deposito || '',
+      puntoControl: dto.puntoControl || ''
     };
+    
     const res = await this.fabricService.invoke(
-      'actualizarDispositivo',
+      'agregarEventoProducto',
       dto.id,
-      '', '', '',
+      this.estados.EN_DISTRIBUCION,
+      `${actor} - ${rol}`,
       dto.latitud,
       dto.longitud,
-      this.eventos.DISTRIBUCION,
-      actor,
-      rol || '',
-      JSON.stringify(dto.documentosMeta || []),
-      JSON.stringify(dto.documentosCodigo || {}),
-      JSON.stringify(dto.documentosHash || []),
-      'false',
-      JSON.stringify(detalles),
+      JSON.stringify(datosEvento)
     );
     return JSON.parse(res);
   }
@@ -223,24 +222,20 @@ export class TrazabilidadService {
 
   // ---------- Producto Adquirido ----------
   async adquirido(dto: AdquiridoDto, actor = '', rol = '') {
-    const detalles = {
-      tienda: dto.tienda,
+    const datosEvento = {
+      puntoControl: dto.puntoControl,
       fechaCompra: dto.fechaCompra,
+      cliente: actor
     };
+    
     const res = await this.fabricService.invoke(
-      'actualizarDispositivo',
+      'agregarEventoProducto',
       dto.id,
-      '', '', '',
+      this.estados.PRODUCTO_ADQUIRIDO,
+      `${actor} - ${rol}`,
       dto.latitud,
       dto.longitud,
-      this.eventos.ADQUIRIDO,
-      actor,
-      rol || '',
-      JSON.stringify(dto.documentosMeta || []),
-      JSON.stringify(dto.documentosCodigo || {}),
-      JSON.stringify(dto.documentosHash || []),
-      'false',
-      JSON.stringify(detalles),
+      JSON.stringify(datosEvento)
     );
     return JSON.parse(res);
   }
@@ -250,48 +245,123 @@ export class TrazabilidadService {
   }
 
   // ---------- Consultas ----------
-  async consultarDispositivo(id: string) {
-    const result = await this.fabricService.query('consultarDispositivo', id);
+  async consultarProducto(id: string) {
+    const result = await this.fabricService.query('obtenerProducto', id);
     return JSON.parse(result);
   }
 
+  async consultarDispositivo(id: string) {
+    // Mantener compatibilidad con el método anterior
+    return this.consultarProducto(id);
+  }
+
   async listarDispositivos() {
-    const result = await this.fabricService.query('listarDispositivos');
+    const result = await this.fabricService.query('listarProductos');
     return JSON.parse(result);
   }
 
   async obtenerHistorial(id: string) {
-    const result = await this.fabricService.query('obtenerHistorial', id);
+    const result = await this.fabricService.query('auditarHistorialProducto', id);
     return JSON.parse(result);
   }
 
   async listarPorLote(uuidLote: string) {
-    const result = await this.fabricService.query('listarPorLote', uuidLote);
+    const result = await this.fabricService.query('listarProductosPorLote', uuidLote);
     return JSON.parse(result);
   }
 
-  async buscar(params: { evento?: string; uuidLote?: string; actor?: string; fechaInicio?: string; fechaFin?: string; }) {
-    const dispositivos = await this.listarDispositivos();
+  async buscar(params: { 
+    evento?: string; 
+    uuidLote?: string; 
+    actor?: string; 
+    fechaInicio?: string; 
+    fechaFin?: string; 
+    estado?: string;
+    marca?: string;
+    lote?: string;
+  }) {
+    // Usar el nuevo método de filtros del contrato
+    const result = await this.fabricService.query(
+      'listarProductosConFiltro',
+      params.estado || '',
+      params.marca || '',
+      params.lote || ''
+    );
+    
+    let productos = JSON.parse(result);
+    
+    // Aplicar filtros adicionales en el backend si es necesario
     const start = params.fechaInicio ? new Date(params.fechaInicio).getTime() : null;
     const end = params.fechaFin ? new Date(params.fechaFin).getTime() : null;
-    return dispositivos.filter((d: any) => {
-      const okEvento = params.evento ? d.evento === params.evento : true;
-      const okLote = params.uuidLote ? d.uuidLote === params.uuidLote : true;
-      const okActor = params.actor ? d.actor === params.actor : true;
+    
+    return productos.filter((producto: any) => {
+      const okLote = params.uuidLote ? producto.uuidLote === params.uuidLote : true;
       const okFecha = (start || end) ? (() => {
-        const t = d.timestamp ? new Date(d.timestamp).getTime() : null;
-        return t && (!start || t >= start) && (!end || t <= end);
+        const fechaCreacion = producto.fechaCreacion ? new Date(producto.fechaCreacion).getTime() : null;
+        return fechaCreacion && (!start || fechaCreacion >= start) && (!end || fechaCreacion <= end);
       })() : true;
-      return okEvento && okLote && okActor && okFecha;
+      
+      return okLote && okFecha;
     });
   }
 
-  // ---------- QR (no tocar lógica) ----------
+  async listarDispositivosRecientes(limite:string | null) {
+    const result = await this.fabricService.query('obtenerActividadReciente', limite || '5');
+    return JSON.parse(result);
+  }
+
+  async listarResumenLotes() {
+    const result = await this.fabricService.query('listarResumenLotes');
+    return JSON.parse(result);
+  }
+
+  async listarPorEstadosDashbord() {
+    const estadisticas = await this.fabricService.query('obtenerEstadisticas');
+    const stats = JSON.parse(estadisticas);
+    const dispositivosRecientes = await this.listarDispositivosRecientes('5');
+    
+    // // Obtener productos por estado usando filtros
+    // const registrados = await this.fabricService.query('listarProductosConFiltro', this.estados.REGISTRADO, '', '');
+    // const embarcados = await this.fabricService.query('listarProductosConFiltro', this.estados.EMBARCADO, '', '');
+    // const nacionalizados = await this.fabricService.query('listarProductosConFiltro', this.estados.NACIONALIZADO, '', '');
+    // const distribuidos = await this.fabricService.query('listarProductosConFiltro', this.estados.EN_DISTRIBUCION, '', '');
+    return {
+      // registrados: JSON.parse(registrados),
+      // distribuidos: JSON.parse(distribuidos),
+      // enTransitos: JSON.parse(embarcados),
+      // nacionalizados: JSON.parse(nacionalizados),
+      dispositivosRecientes: dispositivosRecientes,
+      estadisticas: stats
+    };
+  }
+
+  // ---------- Nuevos métodos del contrato ----------
+  async obtenerEstadisticas() {
+    const result = await this.fabricService.query('obtenerEstadisticas');
+    return JSON.parse(result);
+  }
+
+  async buscarPorQR(codigo: string) {
+    const result = await this.fabricService.query('buscarPorQR', codigo);
+    return JSON.parse(result);
+  }
+
+  async verificarIntegridadProducto(productoId: string) {
+    const result = await this.fabricService.query('verificarIntegridadProducto', productoId);
+    return JSON.parse(result);
+  }
+
+  async auditarLoteCompleto(uuidLote: string) {
+    const result = await this.fabricService.query('auditarLoteCompleto', uuidLote);
+    return JSON.parse(result);
+  }
+
+  // ---------- QR (actualizado para usar nuevos métodos) ----------
   async generarQR(id: string): Promise<string> {
-    const historial = await this.obtenerHistorial(id);
-    if (!historial || historial.length === 0) {
-      throw new Error(`No se encontró historial para el dispositivo ${id}`);
-    }
+    // const historial = await this.obtenerHistorial(id);
+    // if (!historial || historial.length === 0) {
+    //   throw new Error(`No se encontró historial para el producto ${id}`);
+    // }
 
     const frontendUrl = `${this.FRONTEND}/trazabilidad/historial/${encodeURIComponent(id)}`;
     const qrFilePath = path.join(this.qrDir, `qr-${id}.png`);

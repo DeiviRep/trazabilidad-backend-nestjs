@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsLatitude, IsLongitude, IsOptional, IsArray } from "class-validator";
+import { IsString, IsNotEmpty, IsLatitude, IsLongitude, IsOptional, IsArray, IsBoolean } from "class-validator";
 
 export class DesembarqueDto {
   @IsString()
@@ -7,11 +7,10 @@ export class DesembarqueDto {
 
   @IsString()
   @IsNotEmpty()
-  puertoExtranjero: string;
+  puntoControl: string;
 
-  @IsString()
-  @IsNotEmpty()
-  integridad: string; // Ej: "OK", "DAÑADO", "FALTANTE"
+  @IsBoolean()
+  integridad: boolean;
 
   @IsOptional()
   @IsString()

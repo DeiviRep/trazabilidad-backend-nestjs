@@ -120,9 +120,11 @@ export class FabricService implements OnModuleInit, OnModuleDestroy {
       
       try {
         const result = await contract.submitTransaction(functionName, ...args);
+        
         return Buffer.from(result).toString('utf8');
       } catch (error) {
         // ✅ MANEJO ERROR ESPECÍFICAMENTE
+        console.log('registrarProducto response:', JSON.stringify(error));
         if (error instanceof EndorseError) {
           // Si el error es una EndorseError, significa que es un error de negocio del chaincode
           const chaincodeError = error.details[0]?.message || 'Error de chaincode desconocido';
@@ -143,8 +145,14 @@ export class FabricService implements OnModuleInit, OnModuleDestroy {
     return this.tryRequest(async () => {
       const network = this.gateway.getNetwork(this.configService.get<string>('FABRIC_CHANNEL') || 'mychannel');
       const contract = network.getContract(this.configService.get<string>('CHAINCODE_NAME') || 'traceability');
-      const result = await contract.evaluateTransaction(functionName, ...args);
-      return Buffer.from(result).toString('utf8');
+      try {
+        const result = await contract.evaluateTransaction(functionName, ...args);
+        return Buffer.from(result).toString('utf8');
+      } catch (error) {
+          const chaincodeError = error.details[0]?.message || 'Error de chaincode desconocido';
+          this.logger.error(`Error de chaincode en la función ${functionName}: ${chaincodeError}`);
+          throw new FabricException(chaincodeError);
+      }
     }, `query(${functionName})`);
   }
 

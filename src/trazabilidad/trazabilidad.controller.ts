@@ -15,7 +15,6 @@ import { DistribucionDto, DistribucionLoteDto } from './dto/distribucion.dto';
 import { AdquiridoDto, AdquiridoLoteDto } from './dto/adquirido.dto';
 
 @Controller('trazabilidad')
-@UseGuards(AuthGuard('jwt'),RolesGuard)
 export class TrazabilidadController {
   constructor(
     private readonly trazabilidadService: TrazabilidadService,
@@ -23,6 +22,7 @@ export class TrazabilidadController {
   ) {}
 
   // ---------- Registro ----------
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Post('registro')
   @RequirePermissions('registrar_producto')
   @HttpCode(HttpStatus.CREATED)
@@ -32,6 +32,7 @@ export class TrazabilidadController {
     return this.trazabilidadService.registro(dto, actor, rol);
   }
 
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Post('registro/lote')
   @RequirePermissions('registrar_producto')
   @HttpCode(HttpStatus.CREATED)
@@ -42,6 +43,7 @@ export class TrazabilidadController {
   }
 
   // ---------- Embarque ----------
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Post('embarque')
   @RequirePermissions('actualizar_embarque')
   async embarque(@Req() req: Request, @Body() dto: EmbarqueDto) {
@@ -50,6 +52,7 @@ export class TrazabilidadController {
     return this.trazabilidadService.embarque(dto, actor, rol);
   }
 
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Post('embarque/lote')
   @RequirePermissions('actualizar_embarque')
   async embarqueLote(@Req() req: Request, @Body() dto: EmbarqueLoteDto) {
@@ -59,6 +62,7 @@ export class TrazabilidadController {
   }
 
   // ---------- Desembarque ----------
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Post('desembarque')
   @RequirePermissions('actualizar_desembarque')
   async desembarque(@Req() req: Request, @Body() dto: DesembarqueDto) {
@@ -67,6 +71,7 @@ export class TrazabilidadController {
     return this.trazabilidadService.desembarque(dto, actor, rol);
   }
 
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Post('desembarque/lote')
   @RequirePermissions('actualizar_desembarque')
   async desembarqueLote(@Req() req: Request, @Body() dto: DesembarqueLoteDto) {
@@ -76,6 +81,7 @@ export class TrazabilidadController {
   }
 
   // ---------- Nacionalización ----------
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Post('nacionalizacion')
   @RequirePermissions('nacionalizar')
   async nacionalizacion(@Req() req: Request, @Body() dto: NacionalizacionDto) {
@@ -84,6 +90,7 @@ export class TrazabilidadController {
     return this.trazabilidadService.nacionalizacion(dto, actor, rol);
   }
 
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Post('nacionalizacion/lote')
   @RequirePermissions('nacionalizar')
   async nacionalizacionLote(@Req() req: Request, @Body() dto: NacionalizacionLoteDto) {
@@ -93,6 +100,7 @@ export class TrazabilidadController {
   }
 
   // ---------- Distribución ----------
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Post('distribucion')
   @RequirePermissions('gestionar_distribucion')
   async distribucion(@Req() req: Request, @Body() dto: DistribucionDto) {
@@ -101,6 +109,7 @@ export class TrazabilidadController {
     return this.trazabilidadService.distribucion(dto, actor, rol);
   }
 
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Post('distribucion/lote')
   @RequirePermissions('gestionar_distribucion')
   async distribucionLote(@Req() req: Request, @Body() dto: DistribucionLoteDto) {
@@ -110,18 +119,20 @@ export class TrazabilidadController {
   }
 
   // ---------- Producto Adquirido ----------
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Post('adquirido')
-  @RequirePermissions('gestionar_distribucion') // o un permiso específico si defines "producto_adquirido"
+  @RequirePermissions('producto_adquirido')
   async adquirido(@Req() req: Request, @Body() dto: AdquiridoDto) {
     const actor = (req as any).user?.nombre || 'desconocido';
     const rol = (req as any).user?.rol || '';
     return this.trazabilidadService.adquirido(dto, actor, rol);
   }
 
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Post('adquirido/lote')
-  @RequirePermissions('gestionar_distribucion')
+  @RequirePermissions('producto_adquirido')
   async adquiridoLote(@Req() req: Request, @Body() dto: AdquiridoLoteDto) {
-    const actor = (req as any).user?.nombre || 'desconconocido';
+    const actor = (req as any).user?.nombre || 'desconocido';
     const rol = (req as any).user?.rol || '';
     return this.trazabilidadService.adquiridoLote(dto, actor, rol);
   }
@@ -132,6 +143,12 @@ export class TrazabilidadController {
     return this.trazabilidadService.consultarDispositivo(id);
   }
 
+  // Nuevo endpoint para consultar producto (alias del anterior)
+  @Get('producto/:id')
+  async consultarProducto(@Param('id') id: string) {
+    return this.trazabilidadService.consultarProducto(id);
+  }
+
   @Get('buscar')
   async buscar(
     @Query('evento') evento?: string,
@@ -139,8 +156,26 @@ export class TrazabilidadController {
     @Query('actor') actor?: string,
     @Query('fechaInicio') fechaInicio?: string,
     @Query('fechaFin') fechaFin?: string,
+    @Query('estado') estado?: string,
+    @Query('marca') marca?: string,
+    @Query('lote') lote?: string,
   ) {
-    return this.trazabilidadService.buscar({ evento, uuidLote, actor, fechaInicio, fechaFin });
+    return this.trazabilidadService.buscar({ 
+      evento, 
+      uuidLote, 
+      actor, 
+      fechaInicio, 
+      fechaFin, 
+      estado, 
+      marca, 
+      lote 
+    });
+  }
+
+  // Nuevo endpoint para búsqueda por QR/IMEI
+  @Get('buscar-qr/:codigo')
+  async buscarPorQR(@Param('codigo') codigo: string) {
+    return this.trazabilidadService.buscarPorQR(codigo);
   }
 
   @Get('historial/:id')
@@ -149,18 +184,53 @@ export class TrazabilidadController {
     return this.trazabilidadService.obtenerHistorial(id);
   }
 
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Get('lote/:uuidLote')
   @RequirePermissions('consultar_historial')
   async listarPorLote(@Param('uuidLote') uuidLote: string) {
     return this.trazabilidadService.listarPorLote(uuidLote);
   }
 
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Get('listar')
   async listarDispositivos() {
     return this.trazabilidadService.listarDispositivos();
   }
 
-  // @UseGuards(AuthGuard('jwt'))
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Get('resumen-lotes')
+  async listarResumenLotes() {
+    return this.trazabilidadService.listarResumenLotes();
+  }
+  
+  @Get('listar/estadistica')
+  async listarPorEstadosDashbord() {
+    return this.trazabilidadService.listarPorEstadosDashbord();
+  }
+
+  // Nuevo endpoint para estadísticas generales
+  @Get('estadisticas')
+  async obtenerEstadisticas() {
+    return this.trazabilidadService.obtenerEstadisticas();
+  }
+
+  // Nuevo endpoint para verificar integridad
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Get('integridad/:productoId')
+  @RequirePermissions('consultar_historial')
+  async verificarIntegridad(@Param('productoId') productoId: string) {
+    return this.trazabilidadService.verificarIntegridadProducto(productoId);
+  }
+
+  // Nuevo endpoint para auditoría completa de lote
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Get('auditoria/lote/:uuidLote')
+  @RequirePermissions('consultar_historial')
+  async auditarLote(@Param('uuidLote') uuidLote: string) {
+    return this.trazabilidadService.auditarLoteCompleto(uuidLote);
+  }
+
+  @UseGuards(AuthGuard('jwt'))
   @Get('qr/:id')
   async generarQR(@Param('id') id: string) {
     const qrUrl = await this.trazabilidadService.generarQR(id);
@@ -168,7 +238,6 @@ export class TrazabilidadController {
     const backendBase = this.configService.get<string>('BACKEND_BASE_URL') || `http://localhost:${port}`;
     return { qrUrl: `${backendBase}${qrUrl}` };
   }
-
 
   @Get('qr-image/:id')
   async servirQR(@Param('id') id: string, @Res() res: Response) {

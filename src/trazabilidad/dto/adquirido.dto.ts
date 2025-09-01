@@ -8,7 +8,7 @@ export class AdquiridoDto {
 
   @IsString()
   @IsNotEmpty()
-  tienda: string;
+  puntoControl: string;
 
   @IsString()
   @IsNotEmpty()

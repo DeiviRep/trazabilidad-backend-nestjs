@@ -9,12 +9,24 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const request = ctx.getRequest<Request>()
     const status = exception.getStatus()
 
+    const exceptionResponse = exception.getResponse()
+    let message = exception.message
+
+    // Si viene de ValidationPipe, getResponse() trae los detalles
+    if (
+      typeof exceptionResponse === "object" &&
+      exceptionResponse !== null &&
+      (exceptionResponse as any).message
+    ) {
+      message = (exceptionResponse as any).message
+    }
+
     const errorResponse = {
       statusCode: status,
       timestamp: new Date().toISOString(),
       path: request.url,
       method: request.method,
-      message: exception.message || "Error interno del servidor",
+      message,
     }
 
     response.status(status).json(errorResponse)

@@ -12,7 +12,7 @@ export class DistribucionDto {
 
   @IsOptional()
   @IsString()
-  deposito?: string;
+  puntoControl: string;
 
   @IsLatitude()
   latitud: string;

@@ -1,9 +1,13 @@
-import { IsString, IsNotEmpty, IsLatitude, IsLongitude, IsOptional, IsArray, IsUUID } from "class-validator";
+import { IsString, IsNotEmpty, IsLatitude, IsLongitude, IsOptional, IsArray, IsUUID, ValidateIf, isUUID } from "class-validator";
 
 export class RegistroDto {
   @IsString()
+  @IsOptional()
+  id?: string;
+
+  @IsString()
   @IsNotEmpty()
-  id: string;
+  puntoControl: string;
 
   @IsString()
   @IsNotEmpty()
@@ -39,18 +43,14 @@ export class RegistroDto {
   documentosHash?: any[];
 
   @IsOptional()
-  @IsUUID()
+  // @IsUUID()
   uuidLote?: string; // si no se manda, backend genera uno
-
-  // @IsOptional()
-  // @IsString()
-  // urlLote?: string; // se genera en backend
 }
 
 export class RegistroLoteDto {
-  @IsUUID()
-  @IsNotEmpty()
-  uuidLote: string;
+  // @IsUUID()
+  @IsOptional()
+  uuidLote?: string;
 
   @IsArray()
   dispositivos: Omit<RegistroDto, "uuidLote">[];
