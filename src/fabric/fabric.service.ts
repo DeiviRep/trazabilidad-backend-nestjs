@@ -1,10 +1,11 @@
 import { Injectable, OnModuleDestroy, OnModuleInit, Logger } from '@nestjs/common';
-import { Gateway, connect, Identity, Signer, signers, Contract } from '@hyperledger/fabric-gateway';
+import { Gateway, connect, Identity, Signer, signers, Contract, EndorseError } from '@hyperledger/fabric-gateway';
 import * as grpc from '@grpc/grpc-js';
 import * as fs from 'fs';
 import * as crypto from 'crypto';
 import * as path from 'path';
 import { ConfigService } from '@nestjs/config';
+import { FabricException } from 'src/common/exceptions/fabric.exception';
 
 @Injectable()
 export class FabricService implements OnModuleInit, OnModuleDestroy {
@@ -112,12 +113,31 @@ export class FabricService implements OnModuleInit, OnModuleDestroy {
     throw lastErr;
   }
 
-  async invoke(functionName: string, ...args: string[]): Promise<string> {
+  async invoke(functionName: string, ...args: any[]): Promise<string> {
     return this.tryRequest(async () => {
       const network = this.gateway.getNetwork(this.configService.get<string>('FABRIC_CHANNEL') || 'mychannel');
       const contract = network.getContract(this.configService.get<string>('CHAINCODE_NAME') || 'traceability');
-      const result = await contract.submitTransaction(functionName, ...args);
-      return Buffer.from(result).toString('utf8');
+      
+      try {
+        const result = await contract.submitTransaction(functionName, ...args);
+        
+        return Buffer.from(result).toString('utf8');
+      } catch (error) {
+        // ✅ MANEJO ERROR ESPECÍFICAMENTE
+        console.log('registrarProducto response:', JSON.stringify(error));
+        if (error instanceof EndorseError) {
+          // Si el error es una EndorseError, significa que es un error de negocio del chaincode
+          const chaincodeError = error.details[0]?.message || 'Error de chaincode desconocido';
+          
+          this.logger.error(`Error de chaincode en la función ${functionName}: ${chaincodeError}`);
+
+          throw new FabricException(chaincodeError);
+        } else {
+          // Si no es una EndorseError, es un error de infraestructura
+          this.logger.error(`Error de infraestructura en la función ${functionName}:`, error);
+          throw new Error('Error de infraestructura de Fabric: ' + error.message);
+        }
+      }
     }, `invoke(${functionName})`);
   }
 
@@ -125,8 +145,14 @@ export class FabricService implements OnModuleInit, OnModuleDestroy {
     return this.tryRequest(async () => {
       const network = this.gateway.getNetwork(this.configService.get<string>('FABRIC_CHANNEL') || 'mychannel');
       const contract = network.getContract(this.configService.get<string>('CHAINCODE_NAME') || 'traceability');
-      const result = await contract.evaluateTransaction(functionName, ...args);
-      return Buffer.from(result).toString('utf8');
+      try {
+        const result = await contract.evaluateTransaction(functionName, ...args);
+        return Buffer.from(result).toString('utf8');
+      } catch (error) {
+          const chaincodeError = error.details[0]?.message || 'Error de chaincode desconocido';
+          this.logger.error(`Error de chaincode en la función ${functionName}: ${chaincodeError}`);
+          throw new FabricException(chaincodeError);
+      }
     }, `query(${functionName})`);
   }
 
