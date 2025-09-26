@@ -35,5 +35,6 @@ export class DesembarqueDto {
 }
 
 export class DesembarqueLoteDto {
+  @IsArray()
   dispositivos: DesembarqueDto[];
 }

@@ -33,5 +33,6 @@ export class DistribucionDto {
 }
 
 export class DistribucionLoteDto {
+  @IsArray()
   dispositivos: DistribucionDto[];
 }

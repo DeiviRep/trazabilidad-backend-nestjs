@@ -33,5 +33,6 @@ export class AdquiridoDto {
 }
 
 export class AdquiridoLoteDto {
+  @IsArray()
   dispositivos: AdquiridoDto[];
 }

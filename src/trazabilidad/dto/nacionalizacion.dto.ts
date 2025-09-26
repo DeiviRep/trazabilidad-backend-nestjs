@@ -49,5 +49,6 @@ export class NacionalizacionDto {
 }
 
 export class NacionalizacionLoteDto {
+  @IsArray()
   dispositivos: NacionalizacionDto[];
 }
