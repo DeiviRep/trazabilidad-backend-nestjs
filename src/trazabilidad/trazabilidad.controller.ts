@@ -234,8 +234,7 @@ export class TrazabilidadController {
   @Get('qr/:id')
   async generarQR(@Param('id') id: string) {
     const qrUrl = await this.trazabilidadService.generarQR(id);
-    const port = this.configService.get<number>('PORT') || 3000;
-    const backendBase = this.configService.get<string>('BACKEND_BASE_URL') || `http://localhost:${port}`;
+    const backendBase = this.configService.get<string>('BACKEND_BASE_URL') || `http://localhost:3000`;
     return { qrUrl: `${backendBase}${qrUrl}` };
   }
 

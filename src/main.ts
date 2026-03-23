@@ -41,11 +41,12 @@ app.useGlobalPipes(new ValidationPipe({
       'X-Role',
       'Accept',
       'Origin',
-      'X-Requested-With'
+      'X-Requested-With',
+      'ngrok-skip-browser-warning',
     ],
     credentials: true,
   });
 
-  await app.listen(configService.get<number>('PORT') ?? 3000);
+  await app.listen(3000);
 }
 bootstrap();

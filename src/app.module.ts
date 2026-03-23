@@ -33,7 +33,6 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
         synchronize: true, // ⚠️ En producción poner false
       }),
     }),
-    // TypeOrmModule.forFeature([Auditoria]),
     UsuariosModule,
     AuthModule,
     TrazabilidadModule,
@@ -45,10 +44,6 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
   controllers: [AppController],
   providers: [
     AppService,
-    // {
-    //   provide: APP_INTERCEPTOR,
-    //   useClass: AuditoriaInterceptor,
-    // },
     {
       provide: APP_FILTER,
       useClass: HttpExceptionFilter,
