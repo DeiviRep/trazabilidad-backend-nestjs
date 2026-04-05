@@ -372,4 +372,13 @@ export class TrazabilidadService {
     });
     return `/trazabilidad/qr-image/${id}`;
   }
+
+  async obtenerQRBase64(id: string): Promise<string> {
+    const qrFilePath = path.join(this.qrDir, `qr-${id}.png`);
+    if (!fs.existsSync(qrFilePath)) {
+      throw new Error(`QR no encontrado para el ID ${id}`);
+    }
+    const fileBuffer = fs.readFileSync(qrFilePath);
+    return `data:image/png;base64,${fileBuffer.toString('base64')}`;
+  }
 }

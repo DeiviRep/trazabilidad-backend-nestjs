@@ -254,4 +254,10 @@ export class TrazabilidadController {
 
     fs.createReadStream(qrFilePath).pipe(res);
   }
+
+  @Get('qr-base64/:id')
+  async obtenerQRBase64(@Param('id') id: string) {
+    const base64 = await this.trazabilidadService.obtenerQRBase64(id);
+    return { base64 };
+  }
 }
