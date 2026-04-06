@@ -114,35 +114,9 @@ export class TrazabilidadService {
   }
 
   async embarqueLote(dto: EmbarqueLoteDto, actor = '', rol = '') {
-    const datosEvento = {
-      tipoTransporte: dto.dispositivos[0]?.tipoTransporte || '',
-      contenedor: dto.dispositivos[0]?.nroContenedor || '',
-      puntoControl: dto.dispositivos[0]?.puntoControl || ''
-    };
-
-    // Usar evento masivo si todos los dispositivos tienen el mismo lote
-    const primerDispositivo = dto.dispositivos[0];
-    if (primerDispositivo && dto.dispositivos.length > 1) {
-      try {
-        const producto = await this.consultarProducto(primerDispositivo.id);
-        const uuidLote = producto.uuidLote;
-        
-        const res = await this.fabricService.invoke(
-          'agregarEventoLoteMasivo',
-          uuidLote,
-          this.estados.EMBARCADO,
-          `${actor} - ${rol}`,
-          primerDispositivo.latitud,
-          primerDispositivo.longitud,
-          JSON.stringify(datosEvento)
-        );
-        return JSON.parse(res);
-      } catch (error) {
-        // Si falla el evento masivo, procesar individualmente
-      }
-    }
-
-    return Promise.all(dto.dispositivos.map(dispositivo => this.embarque(dispositivo, actor, rol)));
+    return Promise.all(
+      dto.dispositivos.map(dispositivo => this.embarque(dispositivo, actor, rol))
+    );
   }
 
   // ---------- Desembarque ----------
@@ -270,40 +244,65 @@ export class TrazabilidadService {
     return JSON.parse(result);
   }
 
-  async buscar(params: { 
-    evento?: string; 
-    uuidLote?: string; 
-    actor?: string; 
-    fechaInicio?: string; 
-    fechaFin?: string; 
-    estado?: string;
-    marca?: string;
-    lote?: string;
-  }) {
-    // Usar el nuevo método de filtros del contrato
-    const result = await this.fabricService.query(
-      'listarProductosConFiltro',
-      params.estado || '',
-      params.marca || '',
-      params.lote || ''
+async buscar(params: {
+  evento?:      string;
+  uuidLote?:    string;
+  actor?:       string;
+  fechaInicio?: string;
+  fechaFin?:    string;
+  estado?:      string;
+  marca?:       string;
+  lote?:        string;
+}) {
+  // Un solo query al ledger: trae todo y filtramos en memoria en NestJS.
+  // Esto es correcto: el filtrado es lógica de presentación, no del ledger.
+  const result   = await this.fabricService.query('listarProductos');
+  let productos  = JSON.parse(result);
+ 
+  const { estado, marca, lote, uuidLote, fechaInicio, fechaFin } = params;
+ 
+  // Filtro por estado
+  if (estado && estado !== 'TODOS') {
+    productos = productos.filter((p: any) => p.estado === estado);
+  }
+ 
+  // Filtro por marca o modelo o IMEI (búsqueda flexible)
+  if (marca) {
+    const q = marca.toLowerCase();
+    productos = productos.filter((p: any) =>
+      p.marca?.toLowerCase().includes(q) ||
+      p.modelo?.toLowerCase().includes(q) ||
+      p.imeiSerial?.toLowerCase().includes(q)
     );
-    
-    let productos = JSON.parse(result);
-    
-    // Aplicar filtros adicionales en el backend si es necesario
-    const start = params.fechaInicio ? new Date(params.fechaInicio).getTime() : null;
-    const end = params.fechaFin ? new Date(params.fechaFin).getTime() : null;
-    
-    return productos.filter((producto: any) => {
-      const okLote = params.uuidLote ? producto.uuidLote === params.uuidLote : true;
-      const okFecha = (start || end) ? (() => {
-        const fechaCreacion = producto.fechaCreacion ? new Date(producto.fechaCreacion).getTime() : null;
-        return fechaCreacion && (!start || fechaCreacion >= start) && (!end || fechaCreacion <= end);
-      })() : true;
-      
-      return okLote && okFecha;
+  }
+ 
+  // Filtro por número de lote o uuidLote (texto)
+  if (lote) {
+    const q = lote.toLowerCase();
+    productos = productos.filter((p: any) =>
+      p.lote?.toLowerCase().includes(q) ||
+      p.uuidLote?.toLowerCase().includes(q)
+    );
+  }
+ 
+  // Filtro exacto por uuidLote (cuando viene del query param uuidLote)
+  if (uuidLote) {
+    productos = productos.filter((p: any) => p.uuidLote === uuidLote);
+  }
+ 
+  // Filtro por rango de fecha de creación
+  const start = fechaInicio ? new Date(fechaInicio).getTime() : null;
+  const end   = fechaFin    ? new Date(fechaFin).getTime()    : null;
+ 
+  if (start || end) {
+    productos = productos.filter((p: any) => {
+      const t = p.fechaCreacion ? new Date(p.fechaCreacion).getTime() : null;
+      return t && (!start || t >= start) && (!end || t <= end);
     });
   }
+ 
+  return productos;
+}
 
   async listarDispositivosRecientes(limite:string | null) {
     const result = await this.fabricService.query('obtenerActividadReciente', limite || '5');
@@ -319,17 +318,7 @@ export class TrazabilidadService {
     const estadisticas = await this.fabricService.query('obtenerEstadisticas');
     const stats = JSON.parse(estadisticas);
     const dispositivosRecientes = await this.listarDispositivosRecientes('5');
-    
-    // // Obtener productos por estado usando filtros
-    // const registrados = await this.fabricService.query('listarProductosConFiltro', this.estados.REGISTRADO, '', '');
-    // const embarcados = await this.fabricService.query('listarProductosConFiltro', this.estados.EMBARCADO, '', '');
-    // const nacionalizados = await this.fabricService.query('listarProductosConFiltro', this.estados.NACIONALIZADO, '', '');
-    // const distribuidos = await this.fabricService.query('listarProductosConFiltro', this.estados.EN_DISTRIBUCION, '', '');
     return {
-      // registrados: JSON.parse(registrados),
-      // distribuidos: JSON.parse(distribuidos),
-      // enTransitos: JSON.parse(embarcados),
-      // nacionalizados: JSON.parse(nacionalizados),
       dispositivosRecientes: dispositivosRecientes,
       estadisticas: stats
     };
