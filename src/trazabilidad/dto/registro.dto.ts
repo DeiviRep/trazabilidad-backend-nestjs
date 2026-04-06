@@ -1,57 +1,60 @@
-import { IsString, IsNotEmpty, IsLatitude, IsLongitude, IsOptional, IsArray, IsUUID, ValidateIf, isUUID } from "class-validator";
+import { Type } from 'class-transformer';
+import {
+  IsArray,
+  IsLatitude,
+  IsLongitude,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  ValidateNested,
+} from 'class-validator';
 
-export class RegistroDto {
-  @IsString()
+export class DispositivoRegistroDto {
   @IsOptional()
+  @IsString()
   id?: string;
 
-  @IsString()
   @IsNotEmpty()
-  puntoControl: string;
-
   @IsString()
-  @IsNotEmpty()
   marca: string;
 
-  @IsString()
   @IsNotEmpty()
+  @IsString()
   modelo: string;
 
-  @IsString()
   @IsNotEmpty()
+  @IsString()
   imeiSerial: string;
 
-  @IsString()
+  // NUEVO: campo requerido por la tesis (País de Origen)
   @IsNotEmpty()
-  origenPais: string;
+  @IsString()
+  paisOrigen: string;
+
+  @IsNotEmpty()
+  @IsString()
+  puntoControl: string;
 
   @IsLatitude()
   latitud: string;
 
   @IsLongitude()
   longitud: string;
+}
 
+export class RegistroDto extends DispositivoRegistroDto {
   @IsOptional()
-  @IsArray()
-  documentosMeta?: any[];
-
-  @IsOptional()
-  documentosCodigo?: Record<string, any>;
-
-  @IsOptional()
-  @IsArray()
-  documentosHash?: any[];
-
-  @IsOptional()
-  // @IsUUID()
-  uuidLote?: string; // si no se manda, backend genera uno
+  @IsString()
+  uuidLote?: string;
 }
 
 export class RegistroLoteDto {
-  // @IsUUID()
   @IsOptional()
+  @IsString()
   uuidLote?: string;
 
   @IsArray()
-  dispositivos: Omit<RegistroDto, "uuidLote">[];
+  @ValidateNested({ each: true })
+  @Type(() => DispositivoRegistroDto)
+  dispositivos: DispositivoRegistroDto[];
 }

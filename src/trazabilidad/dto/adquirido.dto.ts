@@ -1,38 +1,43 @@
-// src/trazabilidad/dto/adquirido.dto.ts
-import { IsString, IsNotEmpty, IsLatitude, IsLongitude, IsOptional, IsArray } from "class-validator";
+import { Type } from 'class-transformer';
+import {
+  IsArray,
+  IsDateString,
+  IsLatitude,
+  IsLongitude,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  ValidateNested,
+} from 'class-validator';
 
 export class AdquiridoDto {
-  @IsString()
   @IsNotEmpty()
-  id: string; // id del dispositivo
+  @IsString()
+  id: string;
 
-  @IsString()
   @IsNotEmpty()
+  @IsString()
   puntoControl: string;
 
+  // NUEVO: nombre de la tienda donde se adquirio el producto
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  fechaCompra: string; // formato ISO: "2025-08-19T12:00:00Z"
+  tienda?: string;
+
+  @IsOptional()
+  @IsDateString()
+  fechaCompra?: string;
 
   @IsLatitude()
   latitud: string;
 
   @IsLongitude()
   longitud: string;
-
-  @IsOptional()
-  @IsArray()
-  documentosMeta?: any[];
-
-  @IsOptional()
-  documentosCodigo?: Record<string, any>;
-
-  @IsOptional()
-  @IsArray()
-  documentosHash?: any[];
 }
 
 export class AdquiridoLoteDto {
   @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => AdquiridoDto)
   dispositivos: AdquiridoDto[];
 }

@@ -1,20 +1,34 @@
-import { IsString, IsNotEmpty, IsLatitude, IsLongitude, IsArray, IsOptional } from "class-validator";
+import { Type } from 'class-transformer';
+import {
+  IsArray,
+  IsLatitude,
+  IsLongitude,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  ValidateNested,
+} from 'class-validator';
 
 export class EmbarqueDto {
-  @IsString()
   @IsNotEmpty()
-  id: string; // id del dispositivo
+  @IsString()
+  id: string;
 
-  @IsString()
   @IsNotEmpty()
+  @IsString()
   tipoTransporte: string;
 
-  @IsString()
   @IsNotEmpty()
+  @IsString()
   nroContenedor: string;
 
+  // NUEVO: Bill of Lading (maritimo) o Air Waybill (aereo)
+  @IsOptional()
   @IsString()
+  blAwb?: string;
+
   @IsNotEmpty()
+  @IsString()
   puntoControl: string;
 
   @IsLatitude()
@@ -22,20 +36,11 @@ export class EmbarqueDto {
 
   @IsLongitude()
   longitud: string;
-
-  @IsOptional()
-  @IsArray()
-  documentosMeta?: any[];
-
-  @IsOptional()
-  documentosCodigo?: Record<string, any>;
-
-  @IsOptional()
-  @IsArray()
-  documentosHash?: any[];
 }
 
 export class EmbarqueLoteDto {
   @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => EmbarqueDto)
   dispositivos: EmbarqueDto[];
 }

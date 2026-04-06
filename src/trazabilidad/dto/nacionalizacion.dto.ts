@@ -1,21 +1,39 @@
-// src/trazabilidad/dto/nacionalizacion.dto.ts
-import { IsString, IsNotEmpty, IsLatitude, IsLongitude, IsNumber, IsOptional, IsArray } from "class-validator";
+import { Type } from 'class-transformer';
+import {
+  IsArray,
+  IsLatitude,
+  IsLongitude,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  ValidateNested,
+} from 'class-validator';
 
 export class NacionalizacionDto {
-  @IsString()
   @IsNotEmpty()
-  id: string; // id del dispositivo
+  @IsString()
+  id: string;
 
-  @IsString()
   @IsNotEmpty()
-  dim: string; // Declaración de Importación de Mercancías
-
   @IsString()
-  @IsNotEmpty()
   puntoControl: string;
+
+  // Numero de Declaracion de Importacion de Mercaderia
+  @IsNotEmpty()
+  @IsString()
+  dim: string;
+
+  // NUEVO: Numero de Declaracion de Adquisicion de Mercancias
+  @IsOptional()
+  @IsString()
+  dam?: string;
 
   @IsNumber()
   valorCIF: number;
+
+  @IsNumber()
+  totalPagado: number;
 
   @IsNumber()
   arancel: number;
@@ -27,28 +45,16 @@ export class NacionalizacionDto {
   @IsNumber()
   ice?: number;
 
-  @IsNumber()
-  totalPagado: number;
-
   @IsLatitude()
   latitud: string;
 
   @IsLongitude()
   longitud: string;
-
-  @IsOptional()
-  @IsArray()
-  documentosMeta?: any[];
-
-  @IsOptional()
-  documentosCodigo?: Record<string, any>;
-
-  @IsOptional()
-  @IsArray()
-  documentosHash?: any[];
 }
 
 export class NacionalizacionLoteDto {
   @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => NacionalizacionDto)
   dispositivos: NacionalizacionDto[];
 }

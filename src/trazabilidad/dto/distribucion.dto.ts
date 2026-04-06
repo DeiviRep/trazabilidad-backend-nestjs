@@ -1,16 +1,34 @@
-// src/trazabilidad/dto/distribucion.dto.ts
-import { IsString, IsNotEmpty, IsLatitude, IsLongitude, IsOptional, IsArray } from "class-validator";
+import { Type } from 'class-transformer';
+import {
+  IsArray,
+  IsLatitude,
+  IsLongitude,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  ValidateNested,
+} from 'class-validator';
 
 export class DistribucionDto {
-  @IsString()
   @IsNotEmpty()
-  id: string; // id del dispositivo
+  @IsString()
+  id: string;
 
-  @IsString()
+  // Nombre del punto de venta / comerciante
   @IsNotEmpty()
+  @IsString()
   comerciante: string;
 
+  // NUEVO: responsable de recepcion en el punto de venta
   @IsOptional()
+  @IsString()
+  responsable?: string;
+
+  @IsOptional()
+  @IsString()
+  deposito?: string;
+
+  @IsNotEmpty()
   @IsString()
   puntoControl: string;
 
@@ -19,20 +37,11 @@ export class DistribucionDto {
 
   @IsLongitude()
   longitud: string;
-
-  @IsOptional()
-  @IsArray()
-  documentosMeta?: any[];
-
-  @IsOptional()
-  documentosCodigo?: Record<string, any>;
-
-  @IsOptional()
-  @IsArray()
-  documentosHash?: any[];
 }
 
 export class DistribucionLoteDto {
   @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => DistribucionDto)
   dispositivos: DistribucionDto[];
 }

@@ -1,40 +1,48 @@
-import { IsString, IsNotEmpty, IsLatitude, IsLongitude, IsOptional, IsArray, IsBoolean } from "class-validator";
+import { Type } from 'class-transformer';
+import {
+  IsArray,
+  IsBoolean,
+  IsLatitude,
+  IsLongitude,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  ValidateNested,
+} from 'class-validator';
 
 export class DesembarqueDto {
-  @IsString()
   @IsNotEmpty()
-  id: string; // id del dispositivo
+  @IsString()
+  id: string;
 
-  @IsString()
   @IsNotEmpty()
+  @IsString()
   puntoControl: string;
 
+  // Estado fisico de la mercancia (true = conforme)
+  @IsOptional()
   @IsBoolean()
-  integridad: boolean;
+  integridad?: boolean;
 
   @IsOptional()
   @IsString()
   descripcionIntegridad?: string;
+
+  // NUEVO: numero de documento DUS (Chile) o DTI (Peru)
+  @IsOptional()
+  @IsString()
+  documentoTransito?: string;
 
   @IsLatitude()
   latitud: string;
 
   @IsLongitude()
   longitud: string;
-
-  @IsOptional()
-  @IsArray()
-  documentosMeta?: any[];
-
-  @IsOptional()
-  documentosCodigo?: Record<string, any>;
-
-  @IsOptional()
-  @IsArray()
-  documentosHash?: any[];
 }
 
 export class DesembarqueLoteDto {
   @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => DesembarqueDto)
   dispositivos: DesembarqueDto[];
 }
