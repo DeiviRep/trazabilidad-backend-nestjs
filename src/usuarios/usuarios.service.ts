@@ -35,7 +35,7 @@ export class UsuariosService implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
-    // Seed roles si no existen
+    // 1. Crear roles
     const rolesBase = [
       { nombre: "PROVEEDOR", descripcion: "Registra productos y genera documentación inicial" },
       { nombre: "IMPORTADOR", descripcion: "Gestiona proceso completo de importación" },
@@ -45,11 +45,85 @@ export class UsuariosService implements OnModuleInit {
       { nombre: "COMERCIANTE", descripcion: "Distribución y venta" },
       { nombre: "CONSUMIDOR", descripcion: "Verificación y compra final" },
       { nombre: "ADMIN", descripcion: "Administración completa del sistema" },
-    ]
+    ];
+  
     for (const rolData of rolesBase) {
-      const found = await this.rolRepo.findOne({ where: { nombre: rolData.nombre } })
+      const found = await this.rolRepo.findOne({ where: { nombre: rolData.nombre } });
       if (!found) {
-        await this.rolRepo.save(this.rolRepo.create(rolData))
+        await this.rolRepo.save(this.rolRepo.create(rolData));
+      }
+    }
+  
+    // 2. Crear usuarios por defecto
+    const usuariosBase = [
+      {
+        nombre: "Li Wei",
+        email: "wei@fabrica.com",
+        password: "123",
+        rol: "PROVEEDOR",
+      },
+      {
+        nombre: "Carlos Mendoza",
+        email: "mendoza@importadora-andina.com",
+        password: "123",
+        rol: "IMPORTADOR",
+      },
+      {
+        nombre: "José Rodríguez",
+        email: "rodri@transporte.com",
+        password: "123",
+        rol: "TRANSPORTISTA",
+      },
+      {
+        nombre: "Zhang Min",
+        email: "min@aduana.gov",
+        password: "123",
+        rol: "ADUANA_EXTRANJERA",
+      },
+      {
+        nombre: "María Quispe",
+        email: "quispe@aduana.gob.bo",
+        password: "123",
+        rol: "ADUANA_BOLIVIA",
+      },
+      {
+        nombre: "Luis Fernández",
+        email: "fer@distribuidor.com",
+        password: "123",
+        rol: "COMERCIANTE",
+      },
+      {
+        nombre: "Ana López",
+        email: "ana@gmail.com",
+        password: "123",
+        rol: "CONSUMIDOR",
+      },
+      {
+        nombre: "Administrador Sistema",
+        email: "admin@system.com",
+        password: "123",
+        rol: "ADMIN",
+      },
+    ];
+  
+    for (const userData of usuariosBase) {
+      const existing = await this.usuarioRepo.findOne({ where: { email: userData.email } });
+    
+      if (!existing) {
+        const rol = await this.rolRepo.findOne({ where: { nombre: userData.rol } });
+      
+        if (!rol) continue;
+      
+        const passwordHash = await bcrypt.hash(userData.password, 10);
+      
+        const user = this.usuarioRepo.create({
+          nombre: userData.nombre,
+          email: userData.email,
+          passwordHash,
+          rol,
+        });
+      
+        await this.usuarioRepo.save(user);
       }
     }
   }

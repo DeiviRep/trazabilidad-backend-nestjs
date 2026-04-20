@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Res, UseGuards, Req, HttpCode, HttpStatus, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Res, UseGuards, Req, HttpCode, HttpStatus, Query, Patch } from '@nestjs/common';
 import { TrazabilidadService } from './trazabilidad.service';
 import { Response, Request } from 'express';
 import * as path from 'path';
@@ -13,6 +13,7 @@ import { DesembarqueDto, DesembarqueLoteDto } from './dto/desembarque.dto';
 import { NacionalizacionDto, NacionalizacionLoteDto } from './dto/nacionalizacion.dto';
 import { DistribucionDto, DistribucionLoteDto } from './dto/distribucion.dto';
 import { AdquiridoDto, AdquiridoLoteDto } from './dto/adquirido.dto';
+import { ActualizarCampoEventoDto } from './dto/actualizar-campo-evento.dto';
 
 @Controller('trazabilidad')
 export class TrazabilidadController {
@@ -215,7 +216,7 @@ export class TrazabilidadController {
   }
 
   // Nuevo endpoint para verificar integridad
-  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  // @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Get('integridad/:productoId')
   @RequirePermissions('consultar_historial')
   async verificarIntegridad(@Param('productoId') productoId: string) {
@@ -259,5 +260,17 @@ export class TrazabilidadController {
   async obtenerQRBase64(@Param('id') id: string) {
     const base64 = await this.trazabilidadService.obtenerQRBase64(id);
     return { base64 };
+  }
+  
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Patch('evento/campo')
+  @RequirePermissions('registrar_producto')
+  async actualizarCampoEvento(
+    @Req() req: Request,
+    @Body() dto: ActualizarCampoEventoDto,
+  ) {
+    const actor = (req as any).user?.nombre || 'desconocido';
+    const rol   = (req as any).user?.rol   || '';
+    return this.trazabilidadService.actualizarCampoEvento(dto, actor, rol);
   }
 }

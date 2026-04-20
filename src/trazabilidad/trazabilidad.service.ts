@@ -12,6 +12,7 @@ import { DesembarqueDto, DesembarqueLoteDto } from './dto/desembarque.dto';
 import { NacionalizacionDto, NacionalizacionLoteDto } from './dto/nacionalizacion.dto';
 import { DistribucionDto, DistribucionLoteDto } from './dto/distribucion.dto';
 import { AdquiridoDto, AdquiridoLoteDto } from './dto/adquirido.dto';
+import { ActualizarCampoEventoDto } from './dto/actualizar-campo-evento.dto';
 
 @Injectable()
 export class TrazabilidadService {
@@ -382,5 +383,19 @@ export class TrazabilidadService {
     }
     const fileBuffer = fs.readFileSync(qrFilePath);
     return `data:image/png;base64,${fileBuffer.toString('base64')}`;
+  }
+
+  async actualizarCampoEvento(
+    dto: ActualizarCampoEventoDto,
+    actor: string,
+    rol: string,
+  ) {
+    const result = await this.fabricService.invoke(
+      'actualizarCampoEvento',
+      dto.productoId,
+      String(dto.indexEvento),
+      JSON.stringify(dto.campos),
+    );
+    return JSON.parse(result);
   }
 }
