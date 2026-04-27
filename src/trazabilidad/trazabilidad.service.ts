@@ -13,6 +13,7 @@ import { NacionalizacionDto, NacionalizacionLoteDto } from './dto/nacionalizacio
 import { DistribucionDto, DistribucionLoteDto } from './dto/distribucion.dto';
 import { AdquiridoDto, AdquiridoLoteDto } from './dto/adquirido.dto';
 import { ActualizarCampoEventoDto } from './dto/actualizar-campo-evento.dto';
+import { EventsController } from 'src/events/events.controller';
 
 @Injectable()
 export class TrazabilidadService {
@@ -122,7 +123,12 @@ export class TrazabilidadService {
       dto.longitud,
       JSON.stringify(datosEvento),
     );
-    return JSON.parse(res);
+      const producto = JSON.parse(res);
+
+  // 🔔 Notificar
+  EventsController.notify(dto.id, { tipo: 'evento_agregado', producto });
+
+  return producto;
   }
 
   async embarqueLote(dto: EmbarqueLoteDto, actor = '', rol = '') {
@@ -152,7 +158,12 @@ export class TrazabilidadService {
       dto.longitud,
       JSON.stringify(datosEvento),
     );
-    return JSON.parse(res);
+      const producto = JSON.parse(res);
+
+  // 🔔 Notificar
+  EventsController.notify(dto.id, { tipo: 'evento_agregado', producto });
+
+  return producto;
   }
 
   async desembarqueLote(dto: DesembarqueLoteDto, actor = '', rol = '') {
@@ -184,7 +195,12 @@ export class TrazabilidadService {
       dto.longitud,
       JSON.stringify(datosEvento),
     );
-    return JSON.parse(res);
+      const producto = JSON.parse(res);
+
+  // 🔔 Notificar
+  EventsController.notify(dto.id, { tipo: 'evento_agregado', producto });
+
+  return producto;
   }
 
   async nacionalizacionLote(dto: NacionalizacionLoteDto, actor = '', rol = '') {
@@ -212,7 +228,12 @@ export class TrazabilidadService {
       dto.longitud,
       JSON.stringify(datosEvento),
     );
-    return JSON.parse(res);
+      const producto = JSON.parse(res);
+
+  // 🔔 Notificar
+  EventsController.notify(dto.id, { tipo: 'evento_agregado', producto });
+
+  return producto;
   }
 
   async distribucionLote(dto: DistribucionLoteDto, actor = '', rol = '') {
@@ -240,7 +261,12 @@ export class TrazabilidadService {
       dto.longitud,
       JSON.stringify(datosEvento),
     );
-    return JSON.parse(res);
+      const producto = JSON.parse(res);
+
+  // 🔔 Notificar
+  EventsController.notify(dto.id, { tipo: 'evento_agregado', producto });
+
+  return producto;
   }
 
   async adquiridoLote(dto: AdquiridoLoteDto, actor = '', rol = '') {
@@ -385,17 +411,18 @@ export class TrazabilidadService {
     return `data:image/png;base64,${fileBuffer.toString('base64')}`;
   }
 
-  async actualizarCampoEvento(
-    dto: ActualizarCampoEventoDto,
-    actor: string,
-    rol: string,
-  ) {
-    const result = await this.fabricService.invoke(
-      'actualizarCampoEvento',
-      dto.productoId,
-      String(dto.indexEvento),
-      JSON.stringify(dto.campos),
-    );
-    return JSON.parse(result);
-  }
+async actualizarCampoEvento(dto, actor, rol) {
+  const result = await this.fabricService.invoke(
+    'actualizarCampoEvento',
+    dto.productoId,
+    String(dto.indexEvento),
+    JSON.stringify(dto.campos),
+  );
+  const producto = JSON.parse(result);
+
+  // 🔔 Notificar a clientes conectados
+  EventsController.notify(dto.productoId, { tipo: 'campo_actualizado', producto });
+
+  return producto;
+}
 }

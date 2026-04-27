@@ -12,6 +12,7 @@ import { UsuariosModule } from './usuarios/usuarios.module';
 import { AuthModule } from './auth/auth.module';
 import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { EventsController } from './events/events.controller';
 
 @Module({
   imports: [
@@ -41,7 +42,7 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
       serveRoot: '/trazabilidad/qr-image',
     }),
   ],
-  controllers: [AppController],
+  controllers: [AppController, EventsController],
   providers: [
     AppService,
     {
